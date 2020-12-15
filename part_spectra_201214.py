@@ -9,30 +9,42 @@ import openpyxl as xl
 import matplotlib.gridspec as gridspec
 from scipy.fftpack import rfft, rfftfreq, irfft
 
-folder_path = Path(r'C:\Users\Public\Documents\3_spectra_201214')
+folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2020\201124')
 
+proc = ProcessSignal('201124')
+csv_types = proc.read_type_file()
+csv_signals = csv_types['signal_files']
+csv_signal_nums = csv_types['signal_nums']
+excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
+noise_nums = excel_dicts['noise']
+magnetron_nums = excel_dicts['magnetron']
 list_3_4 = ['str013.csv', 'str039.csv']
 list_1_4 = ['str043.csv', 'str071.csv']
 
 files = os.listdir(folder_path)
+magnetron_files = [files[i] for i in range(len(files)) if files[i][3:6] in magnetron_nums and 'csv' in files[i]]
+noise_files = [files[i] for i in range(len(files)) if files[i][3:6] in noise_nums and 'csv' in files[i]]
+
 
 def open_file(file_name):
-    file_path = folder_path / f'{file_name}'
-    print(file_path)
-    t = []
-    u = []
-    with open(file_path) as File:
-        reader = csv.reader(File)
-        for row in reader:
-            t_val = float(row[3])
-            t.append(t_val)
-            u_val = float(row[4])
-            u.append(u_val)
-    t = np.asarray(t)
-    u = np.asarray(u)
-    file_dict = {'time': t,
-                 'voltage': u}
-    return file_dict
+    if 'csv' in file_name and '_1314' not in file_name:
+        file_path = folder_path / f'{file_name}'
+        t = []
+        u = []
+        with open(file_path) as File:
+            reader = csv.reader(File)
+            for row in reader:
+                t_val = float(row[3])
+                t.append(t_val)
+                u_val = float(row[4])
+                u.append(u_val)
+        t = np.asarray(t)
+        u = np.asarray(u)
+        file_dict = {'time': t,
+                     'voltage': u}
+        return file_dict
+    else:
+        pass
 
 
 def fft_amplitude(t, u):
@@ -127,12 +139,13 @@ def part_mean_freq(file_name):
         fft_data = fft_amplitude(t_segment, u_segment)
         freqs, amps = fft_data['frequency'], fft_data['amplitude']
 
-        if file_name in list_1_4:
-            freq_inds = np.logical_and(freqs >= 1e9, freqs <= 4e9)
+        if file_name in magnetron_files:
+            freq_inds = np.logical_or(np.logical_and(freqs >= 1e9, 2.6e9 >= freqs), np.logical_and(freqs >= 2.8e9, freqs <= 4e9))
+            filt_freqs, filt_amps = freqs[freq_inds], amps[freq_inds]
         else:
-            freq_inds = np.logical_and(freqs >= 3e9, freqs <= 4e9)
+            freq_inds = np.logical_and(freqs >= 1e9, freqs <= 4e9)
+            filt_freqs, filt_amps = freqs[freq_inds], amps[freq_inds]
 
-        filt_freqs, filt_amps = freqs[freq_inds], amps[freq_inds]
         mean_freq = mean_frequency(filt_freqs, filt_amps)
 
         ax = fig.add_subplot(gs[i, 0])
@@ -143,15 +156,15 @@ def part_mean_freq(file_name):
         ax.plot(filt_freqs / 1e9, filt_amps, color='orange')
         ax.set_xlim(left=1, right=4.5)
         ax.set_xlabel('f, ГГц')
-    small_graphs_path = folder_path / f'{file_name}_1214.png'
+    small_graphs_path = folder_path / 'Pictures' / f'{file_name}_1314.png'
     fig.savefig(small_graphs_path)
     plt.close(fig)
 
 
 def all_spectra():
-    for file in files:
+    for file in noise_files:
         part_mean_freq(file)
 
-#all_spectra()
+all_spectra()
 
-part_mean_freq('str039.csv')
+#part_mean_freq('str039.csv')
