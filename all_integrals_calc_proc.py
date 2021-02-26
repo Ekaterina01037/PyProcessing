@@ -24,8 +24,8 @@ def all_integrals_proc(exp_num):
             file = proc.open_file(signal, reduced=True)
             u = file['voltage']
             t = file['time']
-            f_low = (2.74 - 0.05) * 1e9
-            f_high = (2.74 + 0.05) * 1e9
+            f_low = (2.714 - 0.05) * 1e9
+            f_high = (2.714 + 0.05) * 1e9
             u_filt = proc.fft_filter(t, u, f_low, f_high)
             dt = file['time_resolution']
             dt_2 = (t[-1] - t[0]) ** 2
@@ -105,7 +105,7 @@ def all_integrals_proc(exp_num):
         cell = sheet.cell(row=k + 2, column=9)
         cell.value = full_ints[k] - peak_ints[k]
 
-    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2020\{}\Excel\Integrals_{}.xlsx'.format(exp_num, exp_num)
+    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2020\{}\Excel\Integrals_{}_1.xlsx'.format(exp_num, exp_num)
     ex_table.save(path)
 
 

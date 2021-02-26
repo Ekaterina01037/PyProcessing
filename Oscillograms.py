@@ -38,6 +38,7 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num):
     test = ProcessSignal(str(exp_num))
     signal_file = test.open_file(signal_num, reduced=False)
     print('Signal {} data obtained'.format(signal_num[3:6]))
+    pl_density = test.read_excel(signal_num)['dicts'][signal_num[3:6]]['Ток плазмы, А']
     voltage_file = test.open_file(voltage_num, reduced=False)
     print('Voltage {} data obtained'.format(voltage_num[3:6]))
     signal_u = signal_file['voltage']
@@ -88,7 +89,7 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num):
     else:
         plt.title('№ {}, n = {}'.format(signal_num[3:6], pl_density))
     '''
-    plt.title('№ {}-{}'.format(signal_num[3:6], voltage_num[3:6]))
+    plt.title(f'№ {signal_num[3:6]}-{voltage_num[3:6]},n = {pl_density}')
     png_name = test.signal_pics_path / 'all_ocs_{}'.format(signal_num[3:6])
     fig.savefig(png_name)
     plt.close(fig)
@@ -100,7 +101,7 @@ def exp_oscillogramms(exp_num):
     for element in zip(signal_nums, voltage_nums):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
-#exp_oscillogramms(210225)
+exp_oscillogramms(210225)
 
 def magnetron_osc(exp_num):
     test = ProcessSignal(str(exp_num))
