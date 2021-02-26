@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 from ProcessClass_10 import ProcessSignal
 import openpyxl as xl
 
+
 def write_file(exp_num):
     fft_test = ProcessSignal(f'{exp_num}')
     fft_test.files_classification()
-#write_file(201127)
+#write_file(210225)
 
 def load_text():
     fft_test = ProcessSignal('190925')
@@ -18,7 +19,7 @@ def load_text():
 def write_csv(exp_num):
     test = ProcessSignal(f'{exp_num}')
     test.reduce_fft(time_0=125e-9, prelim_view=False)
-#write_csv(201127)
+#write_csv(210225)
 
 def load_red_csv():
     test = ProcessSignal('191001')
@@ -71,10 +72,10 @@ def series_fft(exp_num):
                       interest_nums=magnetron_nums,
                       part_nums=noise_nums,
                       fft_type='full', block_full=False,
-                      block_part=True, peak=True, noise=False)
+                      block_part=True, peak=False, noise=False)
 
 
-series_fft(201127)
+#series_fft(210225)
 
 def noise_fft():
     fft_test = ProcessSignal('191001')

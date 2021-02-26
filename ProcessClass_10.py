@@ -175,9 +175,9 @@ class ProcessSignal:
                 if prelim_view:
                     gin_file = self.open_file(csv_gin_files[j])
                     gin_t, gin_v = gin_file['time'], gin_file['voltage']
-                    plt.plot(raw_time / 1e-9, raw_voltage)
-                    plt.plot(time_cut / 1e-9, volt_cut)
-                    plt.plot((gin_t - 50e-9) / 1e-9, gin_v)
+                    plt.plot((gin_t - 50e-9) / 1e-9, gin_v, color='blue')
+                    plt.plot(raw_time / 1e-9, raw_voltage, color='green')
+                    plt.plot(time_cut / 1e-9, volt_cut, color='orange')
                     plt.vlines(start_time / 1e-9, -2.5, 2.5)
                     plt.xlabel('t, ns')
                     plt.ylabel('v')
@@ -226,7 +226,7 @@ class ProcessSignal:
         for i in range(1, rows):
             cell = sheet.cell(row=i, column=1)
             cell_row_val = cell.value
-            if cell_row_val == 'Номер файла':
+            if cell_row_val == 'Номер файла' and row_min == 1:
                 row_min = i
 
         for m in range(1, cols+1):
@@ -252,7 +252,7 @@ class ProcessSignal:
             for i, key in enumerate(keys):
                 row_dict[key] = vals[i]
             row_dicts.append(row_dict)
-        print(row_dicts)
+
         plasma_dicts = []
         reb_dicts = []
         magnetron_dicts = []
@@ -767,7 +767,7 @@ class ProcessSignal:
                     if signal_num in interest_nums:
                         print('{} am in interest_nums'.format(signal_num))
                         if block_full is True:
-                            filtered_u = self.fft_filter(use_t, use_u, 2.695e9, 2.725e9, filt_type='bandstop')
+                            filtered_u = self.fft_filter(use_t, use_u, 2.69e9, 2.74e9, filt_type='bandstop')
                             fft_results = self.fft_amplitude(use_t, filtered_u)
                         else:
                             fft_results = self.fft_amplitude(use_t, use_u)
@@ -776,7 +776,7 @@ class ProcessSignal:
                         amp = fft_results['amplitude']
 
                         if peak:
-                            peak_inds = np.logical_and(2.67e9 < freq, freq < 2.730e9)
+                            peak_inds = np.logical_and(2.69e9 < freq, freq < 2.74e9)
                             peak_freqs = freq[peak_inds]
                             peak_amps = amp[peak_inds]
                             mean_freq = self.mean_frequency(peak_freqs, peak_amps)

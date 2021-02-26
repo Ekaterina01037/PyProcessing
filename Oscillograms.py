@@ -54,23 +54,27 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num):
         print('Filtering done')
     except:
         pass
-    pl_density = test.read_excel(signal_num)['dicts'][signal_num[3:6]]['Ток плазмы, А']
+    #pl_density = test.read_excel(signal_num)['dicts'][signal_num[3:6]]['Ток плазмы, А']
     #magnetron_abs = test.read_excel(signal_num)['dicts'][signal_num[3:6]]['Поглотители в тракте магнетрона']
     fig = plt.figure(num=1, dpi=150)
     ax = fig.add_subplot(111)
     print('Creating a picture...')
     line3, = ax.plot(voltage_t / 1e-9, voltage_u, linewidth=0.7, color='blue')
-    #line1, = ax.plot(signal_t / 1e-9, signal_u, linewidth=0.7, color='dodgerblue')
     line1, = ax.plot(signal_t / 1e-9, u_shift, linewidth=0.7, color='dodgerblue')
+    #line1, = ax.plot(signal_t / 1e-9, signal_u, linewidth=0.7, color='dodgerblue')
+
     line1.set_label('СВЧ сигнал')
     line3.set_label('Импульс напряжения')
+
     try:
         line2, = ax.plot(signal_t / 1e-9, u_filt, linewidth=0.7, color='red')
         line2.set_label('Фильтрованный сигнал (2,71 +/- 0.015) ГГц')
+        
         #line4, = ax.plot(signal_t / 1e-9, u_filt_1, linewidth=0.7, color='green')
         #line4.set_label('Bandpass (2,74 +/- 0.03) ГГц')
     except:
         pass
+
     ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
     ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
     ax.set_ylim(bottom=-2.5, top=2.5)
@@ -96,7 +100,7 @@ def exp_oscillogramms(exp_num):
     for element in zip(signal_nums, voltage_nums):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
-exp_oscillogramms(201127)
+#exp_oscillogramms(210225)
 
 def magnetron_osc(exp_num):
     test = ProcessSignal(str(exp_num))
@@ -121,4 +125,4 @@ def magnetron_osc(exp_num):
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(201127)
+#magnetron_osc(210224)

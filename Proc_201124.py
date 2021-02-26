@@ -3,16 +3,16 @@ import openpyxl as excel
 import matplotlib.pyplot as plt
 from ProcessClass_10 import ProcessSignal
 
-proc = ProcessSignal('201110')
+
+nums, n_s, mean_freqs = [], [], []
+noise_freqs, noise_ns, n_nums = [], [], []
+for signal in csv_signals:proc = ProcessSignal('201110')
 csv_types = proc.read_type_file()
 csv_signals = csv_types['signal_files']
 csv_signal_nums = csv_types['signal_nums']
 excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
 noise_nums = excel_dicts['noise']
 magnetron_nums = excel_dicts['magnetron'][:18:]
-nums, n_s, mean_freqs = [], [], []
-noise_freqs, noise_ns, n_nums = [], [], []
-for signal in csv_signals:
     num = signal[3:6]
     if num in magnetron_nums:
         file = proc.open_file(signal, reduced=True)
