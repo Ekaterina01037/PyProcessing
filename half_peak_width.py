@@ -25,15 +25,19 @@ def peak_width(exp_num):
             use_u = file['voltage']
             dt = file['time_resolution']
             fft_results = exp.fft_amplitude(use_t, use_u)
-            freqs = fft_results['frequency']
-            amps = fft_results['amplitude']
+            freqs = fft_results['frequency'][1::]
+            amps = fft_results['amplitude'][1::]
 
             np_s[k] = exp.read_excel(csv_signal_nums)['dicts'][signal_num]['Ток плазмы, А']
             nums[k] = signal_num
 
             half_peak = max(amps) / 2
             mean_freq = freqs[np.argmax(amps)]
-
+            '''
+            plt.plot(freqs, amps)
+            plt.plot(mean_freq, half_peak, color='red', marker='o')
+            plt.show()
+            '''
             #half_peak_points
             inds = np.arange(0, len(amps))
             r_bool_inds = freqs >= mean_freq
@@ -78,6 +82,7 @@ def peak_width(exp_num):
             plt.plot(under_hp_l_freq, under_hp_l_amp, color='red', marker='o')
             plt.plot(over_hp_l_freq, over_hp_l_amp, color='green', marker='o')
             plt.plot(linreg_left_freq, half_peak, color='blue', marker='o')
+            plt.title(f'{signal_num}')
             plt.show()
             '''
 
@@ -146,8 +151,8 @@ def peak_width(exp_num):
         cell.value = np_s[i]
         cell = sheet.cell(row=i + 2, column=3)
         cell.value = widths[i]
-    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2020\{}\Excel\half_peak_width_{}.xlsx'.format(exp_num, exp_num)
+    path = exp.excel_folder_path / f'half_peak_width_{exp_num}.xlsx'
     ex_table.save(path)
 
 
-peak_width(210225)
+peak_width(210304)

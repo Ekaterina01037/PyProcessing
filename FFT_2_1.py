@@ -7,7 +7,7 @@ import openpyxl as xl
 def write_file(exp_num):
     fft_test = ProcessSignal(f'{exp_num}')
     fft_test.files_classification()
-#write_file(210225)
+#write_file(210304)
 
 def load_text():
     fft_test = ProcessSignal('190925')
@@ -18,8 +18,8 @@ def load_text():
 
 def write_csv(exp_num):
     test = ProcessSignal(f'{exp_num}')
-    test.reduce_fft(time_0=125e-9, prelim_view=False)
-#write_csv(210225)
+    test.reduce_fft(time_0=125e-9, time_interval=130e-9, prelim_view=False)
+#write_csv(210211)
 
 def load_red_csv():
     test = ProcessSignal('191001')
@@ -58,6 +58,30 @@ def single_signal_defpart_fft():
 #single_signal_part_fft()
 
 
+def full_fft_magnetron(exp_num):
+    fft_proc = ProcessSignal(f'{exp_num}')
+    fft_proc.fft_full(fft_type='magnetron_full')
+#full_fft_magnetron(210204)
+
+
+def full_fft_noise(exp_num):
+    fft_proc = ProcessSignal(f'{exp_num}')
+    fft_proc.fft_full(fft_type='reb_noise_full')
+#full_fft_noise(210304)
+
+
+def fft_peak(exp_num):
+    fft_proc = ProcessSignal(f'{exp_num}')
+    fft_proc.fft_full(fft_type='peak')
+#fft_peak(210304)
+
+
+def fft_magnetron_noise_base(exp_num):
+    fft_proc = ProcessSignal(f'{exp_num}')
+    fft_proc.fft_full(fft_type='magnetron_noise_base')
+#fft_magnetron_noise_base(210302)
+
+
 def series_fft(exp_num):
     fft_test = ProcessSignal(f'{exp_num}')
     types = fft_test.read_type_file()
@@ -69,13 +93,14 @@ def series_fft(exp_num):
     print('Magnetron nums are', magnetron_nums)
     print('Noise nums are:', noise_nums)
     fft_test.part_fft(csv_signals,
-                      interest_nums=magnetron_nums,
+                      interest_nums=noise_nums,
                       part_nums=noise_nums,
                       fft_type='full', block_full=False,
-                      block_part=True, peak=False, noise=False)
+                      block_part=True, peak=False, noise=True)
+
+#series_fft(210304)
 
 
-#series_fft(210225)
 
 def noise_fft():
     fft_test = ProcessSignal('191001')

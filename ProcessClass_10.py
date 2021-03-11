@@ -8,7 +8,7 @@ from scipy.signal import iirfilter, sosfilt, zpk2sos
 from scipy.stats import linregress
 #from obspy.signal.filter import bandstop
 import openpyxl as xl
-default_work_folder_path = r"C:\Users\d_Nice\Documents\SignalProcessing\2020"
+default_work_folder_path = r"C:\Users\d_Nice\Documents\SignalProcessing\2021"
 
 class ProcessSignal:
     def __init__(self, experiment_number,
@@ -54,9 +54,13 @@ class ProcessSignal:
                 csv_files.append(file_list[i])
         return csv_files
 
-    def open_file(self, file_name, reduced=False):
+    def open_file(self, file_name, reduced=False, red_type=262):
         if reduced:
-            file_path = self.csv_files_path / '{}'.format(file_name)
+            if red_type == 262:
+                file_path = self.csv_files_path / '{}'.format(file_name)
+            else:
+                folder_path = self.exp_file_path / f"CSV_{red_type}.0"
+                file_path = folder_path / '{}'.format(file_name)
         else:
             file_path = self.exp_file_path / '{}'.format(file_name)
         t = []
@@ -127,11 +131,11 @@ class ProcessSignal:
                 for i in range(0, len(red_t)):
                     writer.writerow([0, 0, 0, red_t[i], red_u[i]])
 
-    def reduce_fft(self, time_0=100e-9, prelim_view=False):
+    def reduce_fft(self, time_0=100e-9, time_interval=262e-9, prelim_view=False):
         csv_types = self.read_type_file()
         csv_signals = csv_types['signal_files']
         csv_gin_files = csv_types['voltage_files']
-        time_1 = time_0 + 275e-9
+        time_1 = time_0 + time_interval + 13e-9
         for j, csv_signal in enumerate(csv_signals):
             file = self.open_file(csv_signal)
             raw_time, raw_voltage = file['time'], file['voltage']
@@ -152,7 +156,7 @@ class ProcessSignal:
                             start_inds.append(i + 1)
                         else:
                             if m % 2 != 0:
-                                if time[i + 1] >= time[start_inds][0] + 262e-9:
+                                if time[i + 1] >= time[start_inds][0] + time_interval:
                                     l += 1
                                     end_inds.append(i)
                                     end_inds.append(i + 1)
@@ -173,6 +177,7 @@ class ProcessSignal:
                     volt_cut = voltage[ind_cut]
                     volt_cut[-1] = y_ideal
                 if prelim_view:
+                    #print("Creating ocsillogramm...")
                     gin_file = self.open_file(csv_gin_files[j])
                     gin_t, gin_v = gin_file['time'], gin_file['voltage']
                     plt.plot((gin_t - 50e-9) / 1e-9, gin_v, color='blue')
@@ -188,7 +193,12 @@ class ProcessSignal:
                     #plt.plot(time_cut[-1], volt_cut[-1], marker='o', color='red')
                     plt.show()
                 else:
-                    file_path = self.csv_files_path / csv_signal
+                    if time_interval == 262e-9:
+                        file_path = self.csv_files_path / csv_signal
+                    else:
+                        folder_path = self.exp_file_path / f"CSV_{time_interval / 1e-9}"
+                        folder_path.mkdir(parents=True, exist_ok=True)
+                        file_path = folder_path / csv_signal
                     file = open(str(file_path), 'w', newline='')
                     with file:
                         writer = csv.writer(file)
@@ -888,16 +898,63 @@ class ProcessSignal:
                             if peak:
                                 png_name = self.fft_peak / 'peak_{}_1'.format(signal_num)
                                 table_path = self.fft_peak / 'peak_{}.xlsx'.format(signal_num)
-                    fig.savefig(png_name)
+                    #fig.savefig(png_name)
                     plt.close(fig)
             print('Circle {} complete'.format(j))
         ex_table.save(table_path)
 
+    def fft_full(self, fft_type, peak_freq=2.71e9, peak_gate=50e6):
+        types = self.read_type_file()
+        csv_signals, csv_signal_nums = types['signal_files'], types['signal_nums']
+        excel_results = self.read_excel(csv_signal_nums)['numbers']
+        noise_nums = excel_results['noise']
+        magnetron_nums = excel_results['magnetron']
+        if fft_type == 'reb_noise_full':
+            nums = noise_nums
+        else:
+            nums = magnetron_nums
+        for num in nums:
+            file_name = f'str{num}.csv'
+            file_data = self.open_file(file_name, reduced=True)
+            t, u, dt = file_data['time'], file_data['voltage'], file_data['time_resolution']
+            pl_density = self.read_excel(file_name)['dicts'][num]['Ток плазмы, А']
+            fft_results = self.fft_amplitude(t, u)
+            freqs, amps = fft_results['frequency'], fft_results['amplitude']
+            mean_freq = self.mean_frequency(freqs, amps)
+            spectrum_mean_freq = mean_freq['mean_freq']
 
+            fig = plt.figure(num=1, dpi=300)
+            ax = fig.add_subplot(111)
 
-
-
-
-
-
-
+            if fft_type == 'magnetron_noise_base':
+                base_inds = np.logical_or(freqs < peak_freq - peak_gate, freqs > peak_freq + peak_gate)
+                base_freqs, base_amps = freqs[base_inds], amps[base_inds]
+                mean_freq = self.mean_frequency(base_freqs, base_amps)
+                spectrum_mean_freq = mean_freq['mean_freq']
+                line, = ax.plot(base_freqs, base_amps, linewidth=0.7, color='indigo')
+            elif fft_type == 'peak':
+                line, = ax.plot(freqs, amps, linewidth=1.2, color='mediumseagreen')
+            else:
+                line, = ax.plot(freqs, amps, linewidth=0.7, color='dodgerblue')
+            if fft_type == 'peak':
+                ax.set_xlim(left=peak_freq-30e6, right=peak_freq+30e6)
+            else:
+                ax.set_xlim(left=0, right=4e9)
+            ax.set_ylim(bottom=0)
+            ax.grid(which='both', axis='both')
+            ax.set_xlabel(r'$Frequency, GHz$')
+            ax.set_ylabel(r'$Amplitude$')
+            ax.set_title(r'$№={}, n={}$'.format(num, pl_density))
+            if fft_type != 'peak':
+                line.set_label(r'$f = {} GHz$'.format(spectrum_mean_freq))
+                ax.legend()
+            if fft_type == 'peak':
+                png_name = self.fft_peak / f'peak_{num}'
+            elif fft_type == 'reb_noise_full':
+                png_name = self.fft_reb / f'reb_noise_{num}'
+            elif fft_type == 'magnetron_noise_base':
+                png_name = self.fft_noise_base / f'noise_base_{num}'
+            else:
+                png_name = self.fft_magnetron / f'amplifier_{num}'
+            fig.savefig(png_name)
+            plt.close(fig)

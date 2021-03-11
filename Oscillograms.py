@@ -34,7 +34,7 @@ def oscillograms():
 #oscillograms()
 
 
-def one_signal_oscillogramm(signal_num, voltage_num, exp_num):
+def one_signal_oscillogramm(signal_num, voltage_num, exp_num, central_freq=2.71e9):
     test = ProcessSignal(str(exp_num))
     signal_file = test.open_file(signal_num, reduced=False)
     print('Signal {} data obtained'.format(signal_num[3:6]))
@@ -50,7 +50,8 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num):
     y_shift = np.mean(signal_u[ind_y_shift])
     u_shift = signal_u - y_shift
     try:
-        u_filt = test.fft_filter(signal_t, signal_u, 2.695e9, 2.725e9)
+        filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
+        u_filt = test.fft_filter(signal_t, signal_u, filt_freq_min, filt_freq_max)
         #u_filt_1 = test.bandpass_filter(signal_t, signal_u, 2.695e9, 2.725e9)
         print('Filtering done')
     except:
@@ -94,6 +95,7 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num):
     fig.savefig(png_name)
     plt.close(fig)
 
+
 def exp_oscillogramms(exp_num):
     test = ProcessSignal(str(exp_num))
     signal_nums = test.read_type_file()['signal_files']
@@ -101,7 +103,9 @@ def exp_oscillogramms(exp_num):
     for element in zip(signal_nums, voltage_nums):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
-exp_oscillogramms(210225)
+
+exp_oscillogramms(210119)
+
 
 def magnetron_osc(exp_num):
     test = ProcessSignal(str(exp_num))
@@ -118,7 +122,7 @@ def magnetron_osc(exp_num):
             ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
             ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
             ax.grid(which='both', axis='both')
-            ax.set_ylim(bottom=-2.5, top=2.5)
+            ax.set_ylim(bottom=-4, top=4)
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
             plt.title(f'№ {file[3:6]}')
@@ -126,4 +130,29 @@ def magnetron_osc(exp_num):
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(210224)
+#magnetron_osc(210302)
+
+
+def file_nums_oscillogramms(exp_num, file_nums):
+    test = ProcessSignal(str(exp_num))
+    for file_num in file_nums:
+        file_name = f'str{file_num:03d}.csv'
+        data = test.open_file(file_name, reduced=False)
+        t, u = data['time'], data['voltage']
+        fig = plt.figure(num=1, dpi=150)
+        ax = fig.add_subplot(111)
+        print(f'Creating a picture {file_num}...')
+        line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
+        ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
+        ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
+        ax.grid(which='both', axis='both')
+        min_y, max_y = np.round(min(u) - 0.25, 0), np.round(max(u) + 0.25, 0)
+        ax.set_ylim(bottom=min_y, top=max_y)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.title(f'№ {file_num}')
+        png_name = test.signal_pics_path / f'ocs_{file_num:03d}'
+        fig.savefig(png_name)
+        plt.close(fig)
+
+#file_nums_oscillogramms(210304, [115, 116])

@@ -4,14 +4,13 @@ import matplotlib.pyplot as plt
 from ProcessClass_10 import ProcessSignal
 
 
-def all_integrals_proc(exp_num):
+def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
     proc = ProcessSignal(str(exp_num))
     csv_types = proc.read_type_file()
     csv_signals = csv_types['signal_files']
     csv_signal_nums = csv_types['signal_nums']
     excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
     noise_nums = excel_dicts['noise']
-    #noise_nums_2 = excel_dicts['noise'][12:28:]
     magnetron_nums = excel_dicts['magnetron']
 
     print('Noise nums:', noise_nums)
@@ -21,13 +20,12 @@ def all_integrals_proc(exp_num):
     for signal in csv_signals:
         num = signal[3:6]
         if num in magnetron_nums:
-            file = proc.open_file(signal, reduced=True)
+            file = proc.open_file(signal, reduced=True, red_type=130)
             u = file['voltage']
             t = file['time']
-            f_low = (2.714 - 0.05) * 1e9
-            f_high = (2.714 + 0.05) * 1e9
+            f_low = (central_freq - band_half_width) * 1e9
+            f_high = (central_freq + band_half_width) * 1e9
             u_filt = proc.fft_filter(t, u, f_low, f_high)
-            dt = file['time_resolution']
             dt_2 = (t[-1] - t[0]) ** 2
 
             pl_density = proc.read_excel(signal)['dicts'][num]['Ток плазмы, А']
@@ -49,7 +47,7 @@ def all_integrals_proc(exp_num):
             print('peak_int = ', np.round(integral, 2), 'noise_int =', np.round(integral - filt_int, 2),
                   'noise_fft =', np.round(full_int - peak_int, 2))
         if num in noise_nums:
-            file = proc.open_file(signal, reduced=True)
+            file = proc.open_file(signal, reduced=True, red_type=130)
             u = file['voltage']
             t = file['time']
             dt = file['time_resolution']
@@ -105,9 +103,8 @@ def all_integrals_proc(exp_num):
         cell = sheet.cell(row=k + 2, column=9)
         cell.value = full_ints[k] - peak_ints[k]
 
-    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2020\{}\Excel\Integrals_{}_1.xlsx'.format(exp_num, exp_num)
+    path = proc.excel_folder_path / f'Integrals_{exp_num}_130.xlsx'
     ex_table.save(path)
 
 
-all_integrals_proc(210225)
-
+all_integrals_proc(210211)
