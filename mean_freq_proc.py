@@ -58,7 +58,7 @@ def read_excel_spectra_data(exp_num):
     new_table.save(new_table_path)
 
 
-#read_excel_spectra_data(210304)
+#read_excel_spectra_data(210322)
 
 
 def noise_mean_freq_calc(exp_num, central_freq=2.714e9, band_half_width=50e6):
@@ -133,4 +133,55 @@ def noise_mean_freq_calc(exp_num, central_freq=2.714e9, band_half_width=50e6):
     path = proc.excel_folder_path / f'Mean_freq_{exp_num}_test.xlsx'
     ex_table.save(path)
 
-noise_mean_freq_calc(210304)
+#noise_mean_freq_calc(210304)
+
+
+def peak_mean_freq_calc(exp_num, central_freq=2.714e9, band_half_width=50e6):
+    proc = ProcessSignal(f'{exp_num}')
+    types = proc.read_type_file()
+    csv_signals, csv_signal_nums = types['signal_files'], types['signal_nums']
+    excel_results = proc.read_excel(csv_signal_nums)['numbers']
+    magnetron_nums = excel_results['magnetron']
+
+    m_nums, m_plasma_dens, m_mean_freqs = [], [], []
+
+    for num in magnetron_nums:
+        file_name = f'str{num}.csv'
+        file_data = proc.open_file(file_name, reduced=True)
+        t, u, dt = file_data['time'], file_data['voltage'], file_data['time_resolution']
+        pl_density = proc.read_excel(file_name)['dicts'][num]['Ток плазмы, А']
+        fft_results = proc.fft_amplitude(t, u)
+        freqs, amps = fft_results['frequency'], fft_results['amplitude']
+
+        left_boundary, right_boundary = central_freq - band_half_width, central_freq + band_half_width
+        noise_base_inds = np.logical_and(freqs >= left_boundary, freqs <= right_boundary)
+        noise_base_freqs, noise_base_amps = freqs[noise_base_inds], amps[noise_base_inds]
+        mean_freq = proc.mean_frequency(noise_base_freqs, noise_base_amps)
+        spectrum_mean_freq = mean_freq['mean_freq']
+        m_nums.append(num), m_plasma_dens.append(pl_density), m_mean_freqs.append(spectrum_mean_freq)
+
+    m_sorted_inds = np.argsort(np.asarray(m_plasma_dens))
+    m_nums_sort = np.asarray(m_nums)[m_sorted_inds]
+    m_plasma_dens_sort = np.asarray(m_plasma_dens)[m_sorted_inds]
+    m_mean_freqs_sort = np.asarray(m_mean_freqs)[m_sorted_inds]
+
+    ex_table = xl.Workbook()
+    ex_table.create_sheet(title='Mean_freq', index=0)
+    sheet = ex_table['Mean_freq']
+    sheet['A1'] = 'Номер'
+    sheet['B1'] = 'Плотность плазмы, отн.ед.'
+    sheet['C1'] = 'Средняя частота, ГГц'
+
+    for k in range(m_nums_sort.size):
+        cell = sheet.cell(row=k + 2, column=1)
+        cell.value = int(m_nums_sort[k])
+        cell = sheet.cell(row=k + 2, column=2)
+        cell.value = m_plasma_dens_sort[k]
+        cell = sheet.cell(row=k + 2, column=3)
+        cell.value = m_mean_freqs_sort[k]
+
+    path = proc.excel_folder_path / f'Mean_freq_{exp_num}_test.xlsx'
+    ex_table.save(path)
+
+
+peak_mean_freq_calc(210322)

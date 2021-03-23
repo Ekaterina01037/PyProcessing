@@ -8,30 +8,33 @@ from scipy.stats import linregress
 import openpyxl as xl
 import matplotlib.gridspec as gridspec
 import datetime
+from ProcessClass_10 import ProcessSignal
 
-folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2020\201222')
+folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210322')
 
 all_files = os.listdir(folder_path)
 files = [all_files[i] for i in range(len(all_files)) if 'csv' in all_files[i]]
 
 
-def open_file(file_name):
-    file_path = folder_path / '{}'.format(file_name)
+def open_file(file_name, m_file_path, type='signal'):
+    if type=='magnetron':
+        file_path = m_file_path
+    else:
+        file_path = folder_path / '{}'.format(file_name)
     t = []
     u = []
-    if 'cut' in file_name:
-        with open(file_path) as File:
-            reader = csv.reader(File)
-            for row in reader:
-                t_val = float(row[3])
-                t.append(t_val)
-                u_val = float(row[4])
-                u.append(u_val)
-        t = np.asarray(t)
-        u = np.asarray(u)
-        file_dict = {'time': t,
-                     'voltage': u}
-        return file_dict
+    with open(file_path) as File:
+        reader = csv.reader(File)
+        for row in reader:
+            t_val = float(row[3])
+            t.append(t_val)
+            u_val = float(row[4])
+            u.append(u_val)
+    t = np.asarray(t)
+    u = np.asarray(u)
+    file_dict = {'time': t,
+                 'voltage': u}
+    return file_dict
 
 
 def cut_files():
@@ -53,8 +56,61 @@ def cut_files():
 
 #cut_files()
 
+def signal_envelope(t, u, time_frame=1e-8):
+    dt = t[1] - t[0]
+    num_of_pts = int(time_frame / dt)
+    times = t[::num_of_pts]
+    time_step = np.abs(times[0] - times[1])
+    t_env = []
+    u_env = []
+    for time in times:
+        time_lim = time + time_step
+        ind_t = np.logical_and(t > time, t <= time_lim)
+        t_frame = t[ind_t]
+        u_frame = u[ind_t]
+        ind_max = np.argmax(u_frame)
+        t_env.append(t_frame[ind_max])
+        u_env.append(u_frame[ind_max])
+    envelope_dict = {'env_time': t_env,
+                     'env_voltage': u_env}
+    return envelope_dict
 
-def signal_periods(file, table=False):
+
+def enveloped_part(t, u, max_part=0.2):
+    env = signal_envelope(t, u)
+    env_t = np.array(env['env_time'])
+    env_u = np.array(env['env_voltage'])
+    max_env_u = np.max(env_u)
+    ind_lim = env_u > max_part * max_env_u
+    t_lim = env_t[ind_lim]
+    ind_stop = len(t_lim-1)
+    l = 0
+    for i in range(len(t_lim)-1):
+        if l < 1:
+            if t_lim[i+1] - t_lim[i] > 90e-9:
+                ind_stop = i
+                l += 1
+    try:
+        t_bond = t_lim[:ind_stop:]
+        u_zeros = np.zeros(t_bond.size)
+        t_min, t_max = t_bond[0], t_bond[-1]
+        ind_use = np.logical_and(t >= t_min, t <= t_max)
+        t_use = t[ind_use]
+        u_use = u[ind_use]
+        #plt.plot(t, u)
+        #plt.plot(env_t, env_u)
+        #plt.plot(t_use, u_use)
+        #plt.plot(t_bond, u_zeros, marker='o', color='red', linestyle='')
+        #plt.show()
+        signal_part_dict = {'time': t_use,
+                            'voltage': u_use}
+        return signal_part_dict
+    except:
+        pass
+
+
+def signal_periods(num, time, voltage, table=False):
+    '''
     file_data = open_file(file)
     if 'in000' in file:
         time, voltage = file_data['time'], file_data['voltage']
@@ -62,6 +118,7 @@ def signal_periods(file, table=False):
         time, voltage = file_data['time'], file_data['voltage']
     #plt.plot(time, voltage)
     #plt.show()
+    '''
     voltage_signs = np.sign(voltage)
     m = 0
     l = 0
@@ -99,7 +156,7 @@ def signal_periods(file, table=False):
             cell.value = zeros[z]
             cell = sheet.cell(row=z + 2, column=2)
             cell.value = periods[z]
-        path = folder_path / f'{file[:6:]}.xlsx'
+        path = folder_path / f'{num}.xlsx'
         ex_table.save(path)
     else:
         periods_dict = {'zero_times': zeros, 'periods': periods}
@@ -165,6 +222,24 @@ def phase_pics(full_time_plot=False):
 
 #phase_pics(full_time_plot=True)
 
+
+def phase_pisc_by_nums(file_nums):
+    magnetron_folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210302')
+    magneton_file_path = magnetron_folder_path / f'str{file_nums}.csv'
+    m_file_data = open_file(97, m_file_path=magneton_file_path, type='magnetron')
+    time_inds =
+    for num in file_nums:
+        file_name = f'str{num:03d}.csv'
+        file_data = open_file(file_name)
+        t, v = file_data['time'], file_data['voltage']
+        env_part_data = enveloped_part(t, v, max_part=0.35)
+        t_env, v_env = env_part_data['time'], env_part_data['voltage']
+        periods_data = signal_periods(num, t_env, v_env)
+        plt.plot(t, v)
+        plt.plot(t_env, v_env)
+        plt.show()
+
+phase_pisc_by_nums([56, 59, 62, 112, 114, 124, 86, 95])
 
 def average_phase_diff(delay_array=True, pic_type='opposite'):
     today_data = datetime.date.today().strftime("%Y%m%d")[2::]

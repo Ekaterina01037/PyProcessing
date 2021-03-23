@@ -61,12 +61,9 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num, central_freq=2.71e
     fig = plt.figure(num=1, dpi=150)
     ax = fig.add_subplot(111)
     print('Creating a picture...')
-    line3, = ax.plot(voltage_t / 1e-9, voltage_u, linewidth=0.7, color='blue')
     line1, = ax.plot(signal_t / 1e-9, u_shift, linewidth=0.7, color='dodgerblue')
     #line1, = ax.plot(signal_t / 1e-9, signal_u, linewidth=0.7, color='dodgerblue')
-
     line1.set_label('СВЧ сигнал')
-    line3.set_label('Импульс напряжения')
 
     try:
         line2, = ax.plot(signal_t / 1e-9, u_filt, linewidth=0.7, color='red')
@@ -76,7 +73,8 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num, central_freq=2.71e
         #line4.set_label('Bandpass (2,74 +/- 0.03) ГГц')
     except:
         pass
-
+    line3, = ax.plot(voltage_t / 1e-9, voltage_u, linewidth=0.7, color='blue')
+    line3.set_label('Импульс напряжения')
     ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
     ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
     ax.set_ylim(bottom=-2.5, top=2.5)
@@ -104,12 +102,12 @@ def exp_oscillogramms(exp_num):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
 
-exp_oscillogramms(210119)
+exp_oscillogramms(210322)
 
 
 def magnetron_osc(exp_num):
     test = ProcessSignal(str(exp_num))
-    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2020\{}'.format(str(exp_num))
+    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2021\{}'.format(str(exp_num))
     file_list = os.listdir(path)
     for file in file_list:
         if 'str' in file:
@@ -130,7 +128,7 @@ def magnetron_osc(exp_num):
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(210302)
+#magnetron_osc(210322)
 
 
 def file_nums_oscillogramms(exp_num, file_nums):

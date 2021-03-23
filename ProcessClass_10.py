@@ -530,18 +530,15 @@ class ProcessSignal:
         ex_table.save(path)
 
 
-    def signal_parts(self, t, u, dt):
-        use_signal = self.useful_part(t, u, dt)
-        use_t = use_signal['signal_time']
-        time_frame = use_t[-1] / 3
-        use_u = use_signal['signal_voltage']
-        start_time = use_t[0]
+    def signal_parts(self, t, u):
+        time_frame = t[-1] / 3
+        start_time = t[0]
         part_dict = {}
         for i in range(3):
             end_time = start_time + time_frame
-            frame_ind = np.logical_and(use_t > start_time, use_t < end_time)
-            t_part = use_t[frame_ind]
-            u_part = use_u[frame_ind]
+            frame_ind = np.logical_and(t > start_time, t < end_time)
+            t_part = t[frame_ind]
+            u_part = u[frame_ind]
             part_dict['Part{}'.format(i)] = {'time': t_part,
                                              'voltage': u_part}
             start_time = end_time
@@ -826,9 +823,9 @@ class ProcessSignal:
                         print('{} in part_nums'.format(signal_num))
                         if block_part is True:
                             filtered_u = self.bandstop_filter(use_t, use_u, 2.709e9, 2.769e9)
-                            part_signal = self.signal_parts(use_t, filtered_u, dt)
+                            part_signal = self.signal_parts(use_t, filtered_u)
                         else:
-                            part_signal = self.signal_parts(use_t, use_u, dt)
+                            part_signal = self.signal_parts(use_t, use_u)
                         part_keys = part_signal.keys()
                         part_freq_dict = {}
 
@@ -843,7 +840,7 @@ class ProcessSignal:
                             fft_results = self.fft_signal(part_time, part_voltage, dt)
                             freq = fft_results['frequency']
                             amp = fft_results['amplitude']
-                            line, = ax.plot(freq, amp, linewidth=0.7)
+                            line, = ax.plot(freq, amp, linewidth=1.2)
 
                             mean_freq = self.mean_frequency(freq, amp)
                             part_freq = mean_freq['mean_freq']
@@ -874,6 +871,8 @@ class ProcessSignal:
                     ax.set_ylim(bottom=0)
                     if peak:
                         ax.set_xlim(left=2.68e9, right=2.74e9)
+                    elif fft_type == 'part':
+                        ax.set_xlim(left=2.5e9, right=3e9)
                     else:
                         ax.set_xlim(left=0, right=4e9)
                     ax.grid(which='both', axis='both')
@@ -898,10 +897,10 @@ class ProcessSignal:
                             if peak:
                                 png_name = self.fft_peak / 'peak_{}_1'.format(signal_num)
                                 table_path = self.fft_peak / 'peak_{}.xlsx'.format(signal_num)
-                    #fig.savefig(png_name)
+                    fig.savefig(png_name)
                     plt.close(fig)
             print('Circle {} complete'.format(j))
-        ex_table.save(table_path)
+        #ex_table.save(table_path)
 
     def fft_full(self, fft_type, peak_freq=2.71e9, peak_gate=50e6):
         types = self.read_type_file()

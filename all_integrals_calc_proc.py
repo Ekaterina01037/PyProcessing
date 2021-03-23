@@ -20,7 +20,7 @@ def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
     for signal in csv_signals:
         num = signal[3:6]
         if num in magnetron_nums:
-            file = proc.open_file(signal, reduced=True, red_type=130)
+            file = proc.open_file(signal, reduced=True)
             u = file['voltage']
             t = file['time']
             f_low = (central_freq - band_half_width) * 1e9
@@ -47,7 +47,7 @@ def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
             print('peak_int = ', np.round(integral, 2), 'noise_int =', np.round(integral - filt_int, 2),
                   'noise_fft =', np.round(full_int - peak_int, 2))
         if num in noise_nums:
-            file = proc.open_file(signal, reduced=True, red_type=130)
+            file = proc.open_file(signal, reduced=True)
             u = file['voltage']
             t = file['time']
             dt = file['time_resolution']
@@ -103,8 +103,8 @@ def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
         cell = sheet.cell(row=k + 2, column=9)
         cell.value = full_ints[k] - peak_ints[k]
 
-    path = proc.excel_folder_path / f'Integrals_{exp_num}_130.xlsx'
+    path = proc.excel_folder_path / f'Integrals_{exp_num}.xlsx'
     ex_table.save(path)
 
 
-all_integrals_proc(210211)
+all_integrals_proc(210322)
