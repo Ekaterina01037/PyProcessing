@@ -3,9 +3,12 @@ from openpyxl.utils import get_column_letter
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
+from scipy.fftpack import rfft, rfftfreq, irfft
 
 main_excel_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2020\210220\210220.xlsx')
 type_file_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2020\210220\Excel\types.xlsx')
+
 
 def read_excel():
     wb = xl.load_workbook(main_excel_path)
@@ -37,7 +40,7 @@ def read_excel():
         if 'файл' in cell_name:
             cell_key = 'num'
         keys.append(cell_key)
-read_excel()
+#read_excel()
 '''
     row_dicts = []
     for l in range(min_row + 1, max_row + 1):
@@ -111,162 +114,84 @@ read_excel()
                      'numbers': use_nums}
     return excel_results
 '''
+folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210302')
 
 
-def part_fft(self, csv_signals, interest_nums,
-             part_nums, fft_type='part',
-             block_full=False, block_part=True,
-             peak=False, noise=False):
-    ex_table = xl.Workbook()
-    ex_table.create_sheet(title='Full FFT', index=0)
-    ex_table.create_sheet(title='Part FFT', index=1)
-    sheet1 = ex_table['Full FFT']
-    sheet2 = ex_table['Part FFT']
-    sheet2['A1'] = 'File Number'
-    sheet1['A1'] = 'File Number'
-    signal_dict = {}
-    row_f = 1
-    row_p = 1
-    for j, csv_signal in enumerate(csv_signals):
-        signal_num = csv_signal[3:6]
-        if signal_num in interest_nums or signal_num in part_nums:
-            use_signal = self.open_file(csv_signal, reduced=True)
-            use_t = use_signal['time']
-            use_u = use_signal['voltage']
-            dt = use_signal['time_resolution']
-            fig = plt.figure(num=1, dpi=300)
-            ax = fig.add_subplot(111)
-            line = None
-            ax.set_prop_cycle(color=['mediumseagreen', 'dodgerblue', 'indigo'])
-            if fft_type == 'full' or fft_type == 'both':
-                if signal_num in interest_nums:
-                    print('{} am in interest_nums'.format(signal_num))
-                    if block_full is True:
-                        filtered_u = self.fft_filter(use_t, use_u, 2.69e9, 2.74e9, filt_type='bandstop')
-                        fft_results = self.fft_amplitude(use_t, filtered_u)
-                    else:
-                        fft_results = self.fft_amplitude(use_t, use_u)
-                    pl_density = self.read_excel(interest_nums)['dicts'][signal_num]['Ток плазмы, А']
-                    freq = fft_results['frequency']
-                    amp = fft_results['amplitude']
+def open_file(file_name):
+    file_path = folder_path / 'str{}.csv'.format(file_name)
+    t = []
+    u = []
+    with open(file_path) as File:
+        reader = csv.reader(File)
+        for row in reader:
+            t_val = float(row[3])
+            t.append(t_val)
+            u_val = float(row[4])
+            u.append(u_val)
+    t = np.asarray(t)
+    u = np.asarray(u)
+    file_dict = {'time': t,
+                 'voltage': u}
+    return file_dict
 
-                    if peak:
-                        peak_inds = np.logical_and(2.69e9 < freq, freq < 2.74e9)
-                        peak_freqs = freq[peak_inds]
-                        peak_amps = amp[peak_inds]
-                        mean_freq = self.mean_frequency(peak_freqs, peak_amps)
-                        # line, = ax.plot(peak_freqs, peak_amps, linewidth=1.2)
-                        line, = ax.plot(freq, amp, linewidth=1.2)
-                        peak_max = np.round(np.max(peak_amps), 2)
-                    else:
-                        mean_freq = self.mean_frequency(freq, amp)
-                        line, = ax.plot(freq, amp, linewidth=0.7)
-                        line, = ax.plot(freq, amp, linewidth=0.7)
-                    try:
-                        spectrum_mean_freq = mean_freq['mean_freq']
-                        line.set_label(r'$f = {} GHz$'.format(spectrum_mean_freq))
 
-                        value_f = str('f, GHz')
-                        cell_f = sheet1.cell(row=1, column=2)
-                        cell_f.value = value_f
+def fft_amplitude(t, u):
+    dt = np.abs(t[1] - t[0])
+    len_t = len(t)
+    u_fft = rfft(u)
+    freq_fft = rfftfreq(len_t, dt)
+    n = len(u)
+    p_freq = freq_fft[1:n:2]
+    n_freq = len(p_freq)
+    amp_fft = np.zeros(n_freq)
+    amp_fft[0] = u_fft[0] / n
+    if n % 2 == 0:
+        amp_fft[n_freq - 1] = u_fft[-1] / n
+        j = 1
+        for i in range(1, n_freq - 2):
+            amp_fft[i] = 2 * np.sqrt(u_fft[j] ** 2 + u_fft[j + 1] ** 2) / n
+            j += 2
+    if n % 2 != 0:
+        j = 1
+        for i in range(1, n_freq - 1):
+            amp_fft[i] = 2 * np.sqrt(u_fft[j] ** 2 + u_fft[j + 1] ** 2) / n
+            j += 2
 
-                        cell_pl = sheet1.cell(row=1, column=3)
-                        cell_pl.value = str('n, arb.units')
+    ind_fake_freqs_1 = np.logical_or(p_freq <= 1.249e9, 1.251e9 <= p_freq)
+    p_freq_1 = p_freq[ind_fake_freqs_1]
+    amp_fft_1 = amp_fft[ind_fake_freqs_1]
 
-                        row_f = row_f + 1
-                        cell_name = 'A{}'.format(row_f)
-                        sheet1[str(cell_name)] = '{}'.format(signal_num)
-                        value = spectrum_mean_freq
-                        cell = sheet1.cell(row=row_f, column=2)
-                        cell.value = value
+    ind_fake_freqs_2 = np.logical_or(p_freq_1 <= 2.499e9, 2.501e9 <= p_freq_1)
+    p_freq_2 = p_freq_1[ind_fake_freqs_2]
+    amp_fft_2 = amp_fft_1[ind_fake_freqs_2]
 
-                        value_pl = pl_density
-                        cell = sheet1.cell(row=row_f, column=3)
-                        cell.value = value_pl
-                    except TypeError:
-                        pass
+    #ind_cutoff = p_freq_2 <= cutoff_frequency
+    #cut_freq = p_freq_2[ind_cutoff]
+    #cut_fft_amp = amp_fft_2[ind_cutoff]
+    fft_amp_dict = {'frequency': p_freq_2,
+                    'amplitude': amp_fft_2}
+    return fft_amp_dict
 
-            if fft_type == 'part' or fft_type == 'both':
-                if signal_num in part_nums:
-                    print('{} in part_nums'.format(signal_num))
-                    if block_part is True:
-                        filtered_u = self.bandstop_filter(use_t, use_u, 2.709e9, 2.769e9)
-                        part_signal = self.signal_parts(use_t, filtered_u, dt)
-                    else:
-                        part_signal = self.signal_parts(use_t, use_u, dt)
-                    part_keys = part_signal.keys()
-                    part_freq_dict = {}
 
-                    row_p = row_p + 1
-                    cell_name = 'A{}'.format(row_p)
-                    sheet2[str(cell_name)] = '{}'.format(signal_num)
-                    for i, part_key in enumerate(part_keys):
-                        k = i + 1
-                        col = k + 1
-                        part_time = part_signal[part_key]['time']
-                        part_voltage = part_signal[part_key]['voltage']
-                        fft_results = self.fft_signal(part_time, part_voltage, dt)
-                        freq = fft_results['frequency']
-                        amp = fft_results['amplitude']
-                        line, = ax.plot(freq, amp, linewidth=0.7)
-
-                        mean_freq = self.mean_frequency(freq, amp)
-                        part_freq = mean_freq['mean_freq']
-
-                        value_f = str('f{}'.format(k))
-                        cell_f = sheet2.cell(row=1, column=col)
-                        cell_f.value = value_f
-
-                        value = part_freq
-                        cell = sheet2.cell(row=row_p, column=col)
-                        cell.value = value
-                        part_freq_dict['f{}, GHz'.format(k)] = part_freq
-                        line.set_label(r'$f_{}= {} GHz$'.format(k, part_freq))
-                    pl_density = self.read_excel(part_nums)['dicts'][signal_num]['Ток плазмы, А']
-                    signal_dict[signal_num] = part_freq_dict
-            if fft_type == 'part' or fft_type == 'both':
-                if signal_num in part_nums:
-                    ax.set_title(r'$File\/Number = {} (Part FFT, n={})$'.format(signal_num, pl_density))
-            if fft_type == 'full' or fft_type == 'both':
-                if signal_num in interest_nums:
-                    if noise:
-                        ax.set_title(r'$File\/Number = {},\/ (n={}) $'.format(signal_num, pl_density))
-                    else:
-                        # absorbers = self.read_excel(part_nums)['dicts'][signal_num]['Поглотители в тракте магнетрона']
-                        ax.set_title(r'$File\/Number = {},\/ \/ n={} $'.format(signal_num, pl_density))
-
-            if line is not None:
-                ax.set_ylim(bottom=0)
-                if peak:
-                    ax.set_xlim(left=2.68e9, right=2.74e9)
-                else:
-                    ax.set_xlim(left=0, right=4e9)
-                ax.grid(which='both', axis='both')
-                ax.set_xlabel(r'$Frequency, GHz$')
-                ax.set_ylabel(r'$Amplitude$')
-                ax.legend()
-                if fft_type == 'part' or fft_type == 'both':
-                    if signal_num in part_nums:
-                        png_name = self.fft_part_path / signal_num
-                if fft_type == 'full' or fft_type == 'both':
-                    if signal_num in interest_nums:
-                        if noise:
-                            png_name = self.fft_reb / 'reb_{}'.format(signal_num)
-                            table_path = self.fft_reb / 'fft_reb_{}.xlsx'.format(signal_num)
-                        else:
-                            if block_full:
-                                png_name = self.fft_noise_base / 'noise_base_{}'.format(signal_num)
-                                table_path = self.fft_noise_base / 'fft_noise_base_{}.xlsx'.format(signal_num)
-                            else:
-                                png_name = self.fft_magnetron / 'magnetron_{}'.format(signal_num)
-                                table_path = self.fft_magnetron / 'fft_magnetron_{}.xlsx'.format(signal_num)
-                        if peak:
-                            png_name = self.fft_peak / 'peak_{}_1'.format(signal_num)
-                            table_path = self.fft_peak / 'peak_{}.xlsx'.format(signal_num)
-                fig.savefig(png_name)
-                plt.close(fig)
-        print('Circle {} complete'.format(j))
-    ex_table.save(table_path)
+def single_fft_start_time(num, start_time=400e-9):
+    file_data = open_file(num)
+    t, v = file_data['time'], file_data['voltage']
+    time_interval = 1024 * 8 * 2 * 16 * 1e-12
+    print(time_interval)
+    end_time = start_time + time_interval
+    print(end_time)
+    interval_inds = np.logical_and(t >= start_time, t <= end_time)
+    t_plato, v_plato = t[interval_inds], v[interval_inds]
+    #plt.plot(t_plato, v_plato)
+    #plt.plot([t_plato], [v_plato])
+    fft_results = fft_amplitude(t_plato, v_plato)
+    freqs, amps = fft_results['frequency'][1::], fft_results['amplitude'][1::]
+    peak_freq, peak = np.round(freqs[np.argmax(amps)] / 1e9, 3), np.max(amps)
+    plt.plot(freqs, amps)
+    #plt.xlim(left=2.7e9, right=2.74e9)
+    plt.title(f'{num}, peak_freq ={peak_freq}')
+    plt.show()
+single_fft_start_time('097')
 
 
 def fft_full(self, magnetron_full=False, magnetron_noise_base=True, peak=False, reb_noise=False, peak_freq=2.71e9,

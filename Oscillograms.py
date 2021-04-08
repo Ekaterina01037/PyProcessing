@@ -96,13 +96,15 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num, central_freq=2.71e
 
 def exp_oscillogramms(exp_num):
     test = ProcessSignal(str(exp_num))
-    signal_nums = test.read_type_file()['signal_files']
+    signal_nums_0 = test.read_type_file()['signal_files']
+    print(signal_nums_0)
+    signal_nums = [signal_nums_0[i] for i in range(len(signal_nums_0)) if signal_nums_0[i] != 'str015.csv']
     voltage_nums = test.read_type_file()['voltage_files']
     for element in zip(signal_nums, voltage_nums):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
 
-exp_oscillogramms(210322)
+exp_oscillogramms(210407)
 
 
 def magnetron_osc(exp_num):
@@ -128,7 +130,7 @@ def magnetron_osc(exp_num):
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(210322)
+#magnetron_osc(210326)
 
 
 def file_nums_oscillogramms(exp_num, file_nums):
@@ -153,4 +155,4 @@ def file_nums_oscillogramms(exp_num, file_nums):
         fig.savefig(png_name)
         plt.close(fig)
 
-#file_nums_oscillogramms(210304, [115, 116])
+#file_nums_oscillogramms(210407, [87,88])

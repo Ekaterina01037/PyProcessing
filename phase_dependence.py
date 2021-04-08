@@ -10,17 +10,14 @@ import matplotlib.gridspec as gridspec
 import datetime
 from ProcessClass_10 import ProcessSignal
 
-folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210322')
+folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210322\CSV')
 
 all_files = os.listdir(folder_path)
 files = [all_files[i] for i in range(len(all_files)) if 'csv' in all_files[i]]
 
 
-def open_file(file_name, m_file_path, type='signal'):
-    if type=='magnetron':
-        file_path = m_file_path
-    else:
-        file_path = folder_path / '{}'.format(file_name)
+def open_file(file_name):
+    file_path = folder_path / '{}'.format(file_name)
     t = []
     u = []
     with open(file_path) as File:
@@ -145,6 +142,12 @@ def signal_periods(num, time, voltage, table=False):
         zero_xs.append(new_x)
     periods = np.diff(zero_xs)
     zeros = zero_xs[1::]
+    '''
+    #prelim_view
+    plt.plot(time, voltage)
+    plt.plot(zeros, np.zeros(len(zeros)), marker='o', linestyle=' ')
+    plt.show()
+    '''
     if table:
         ex_table = xl.Workbook()
         ex_table.create_sheet(title='Период', index=0)
@@ -161,6 +164,7 @@ def signal_periods(num, time, voltage, table=False):
     else:
         periods_dict = {'zero_times': zeros, 'periods': periods}
         return periods_dict
+
 #signal_periods()
 
 
@@ -224,22 +228,40 @@ def phase_pics(full_time_plot=False):
 
 
 def phase_pisc_by_nums(file_nums):
-    magnetron_folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210302')
-    magneton_file_path = magnetron_folder_path / f'str{file_nums}.csv'
-    m_file_data = open_file(97, m_file_path=magneton_file_path, type='magnetron')
-    time_inds =
+    magnetron_file = 'str097_m210302.csv'
+    m_file_data = open_file(magnetron_file)
+    m_t, m_v = m_file_data['time'], m_file_data['voltage'] - np.mean(m_file_data['voltage'])
+    m_inds = m_t >= 400e-9
+    #m_inds = m_t >= -100e-9
+    m_t_plato, m_v_plato = m_t[m_inds], m_v[m_inds]
     for num in file_nums:
         file_name = f'str{num:03d}.csv'
         file_data = open_file(file_name)
         t, v = file_data['time'], file_data['voltage']
-        env_part_data = enveloped_part(t, v, max_part=0.35)
-        t_env, v_env = env_part_data['time'], env_part_data['voltage']
+        t_env, v_env = t, v
+        #env_part_data = enveloped_part(t, v, max_part=0.45)
+        #t_env, v_env = env_part_data['time'], env_part_data['voltage'] - np.mean(env_part_data['voltage'])
+        m_t_plato, m_v_plato_norm = m_t_plato - (m_t_plato[0] - t_env[0]), m_v_plato * np.max(v_env) / np.max(m_v_plato)
         periods_data = signal_periods(num, t_env, v_env)
-        plt.plot(t, v)
-        plt.plot(t_env, v_env)
+        m_periods_data = signal_periods(97, m_t_plato, m_v_plato)
+        signal_zeros, m_zeros = periods_data['zero_times'], m_periods_data['zero_times']
+        sign_periods = periods_data['periods']
+        t_env_shifted = t_env - np.mean(sign_periods)
+
+
+        #prelim_plots
+        plt.plot(m_t_plato, m_v_plato_norm)
+        #plt.plot(t, v)
+        plt.plot(t_env_shifted, v_env)
+        #plt.plot(signal_zeros, np.zeros(len(signal_zeros)), marker='o', linestyle=' ')
+        #plt.plot(m_zeros, np.zeros(len(m_zeros)), marker='o', linestyle=' ')
+        plt.hlines(y=0, xmin=t_env[0], xmax=t_env[-1])
+        plt.title(f'{num}')
         plt.show()
 
-phase_pisc_by_nums([56, 59, 62, 112, 114, 124, 86, 95])
+
+#phase_pisc_by_nums([56, 59, 62, 112, 114, 86, 95, 90])
+phase_pisc_by_nums([124])
 
 def average_phase_diff(delay_array=True, pic_type='opposite'):
     today_data = datetime.date.today().strftime("%Y%m%d")[2::]

@@ -134,6 +134,7 @@ class ProcessSignal:
     def reduce_fft(self, time_0=100e-9, time_interval=262e-9, prelim_view=False):
         csv_types = self.read_type_file()
         csv_signals = csv_types['signal_files']
+        #csv_signals = ['str097.csv']
         csv_gin_files = csv_types['voltage_files']
         time_1 = time_0 + time_interval + 13e-9
         for j, csv_signal in enumerate(csv_signals):
@@ -273,7 +274,7 @@ class ProcessSignal:
             heating = row_dict['Накал']
             magnetron_delay = row_dict['Задержка магнетрона, нс']
             #magnetron_in_voltage = row_dict['Входное напряжение магнетрона, В']
-            comment = 0
+            comment = row_dict['Комментарий']
             if isinstance(fnum, int):
                 if isinstance(d_plasma, float) or isinstance(d_plasma, int):
                     if comment != 'except':
@@ -762,7 +763,7 @@ class ProcessSignal:
         for j, csv_signal in enumerate(csv_signals):
             signal_num = csv_signal[3:6]
             if signal_num in interest_nums or signal_num in part_nums:
-                use_signal = self.open_file(csv_signal, reduced=True)
+                use_signal = self.open_file(csv_signal, reduced=False)
                 use_t = use_signal['time']
                 use_u = use_signal['voltage']
                 dt = use_signal['time_resolution']

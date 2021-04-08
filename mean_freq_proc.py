@@ -3,6 +3,50 @@ import openpyxl as xl
 from pathlib import Path
 import os
 from ProcessClass_10 import ProcessSignal
+import matplotlib.pyplot as plt
+
+
+def e_square_spectra(exp_num, signal_type='magnetron', scale='log'):
+    proc = ProcessSignal(f'{exp_num}')
+    types = proc.read_type_file()
+    csv_signals, csv_signal_nums = types['signal_files'], types['signal_nums']
+    excel_results = proc.read_excel(csv_signal_nums)['numbers']
+    if signal_type == 'magnetron':
+        nums_for_proc = excel_results['magnetron']
+    elif signal_type == 'noise':
+        nums_for_proc = excel_results['noise']
+    for num in nums_for_proc:
+        file_name = f'str{num}.csv'
+        file_data = proc.open_file(file_name, True)
+        t, u = file_data['time'], file_data['voltage']
+        fft_data = proc.fft_amplitude(t, u * u)
+        freqs, amps = fft_data['frequency'][2::], fft_data['amplitude'][2::]
+        inds = freqs <= 4e9
+        freqs_4, amps_4 = freqs[inds], amps[inds]
+        pl_dens = proc.read_excel(file_name)['dicts'][num]['Ток плазмы, А']
+
+        fig = plt.figure(num=1, dpi=300)
+        ax = fig.add_subplot(111)
+
+        line, = ax.plot(freqs_4, amps_4)
+        ax.set_xlim(left=1e9, right=4e9)
+        if scale == 'log':
+            ax.set_yscale('log')
+            ax.set_ylim(bottom=10**(-5))
+            pic_name = r'Спектр квадрата напряжения\Логарифмический\ u_2_log_{}'.format(num)
+        else:
+            ax.set_ylim(bottom=0)
+            pic_name = r'Спектр квадрата напряжения\Обычный\ u_2_{}'.format(num)
+        ax.grid(which='both', axis='both')
+        ax.set_title(r'$№={}, n={}$'.format(num, pl_dens))
+        png_name = proc.fft_pics_path / pic_name
+        fig.savefig(png_name)
+        plt.close(fig)
+        plt.show()
+
+
+e_square_spectra(210322, scale='ordinary')
+
 
 def read_excel_spectra_data(exp_num):
     excel_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\{}\Excel'.format(exp_num))
@@ -184,4 +228,4 @@ def peak_mean_freq_calc(exp_num, central_freq=2.714e9, band_half_width=50e6):
     ex_table.save(path)
 
 
-peak_mean_freq_calc(210322)
+#peak_mean_freq_calc(210322)
