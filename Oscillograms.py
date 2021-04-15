@@ -89,7 +89,7 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num, central_freq=2.71e
         plt.title('№ {}, n = {}'.format(signal_num[3:6], pl_density))
     '''
     plt.title(f'№ {signal_num[3:6]}-{voltage_num[3:6]},n = {pl_density}')
-    png_name = test.signal_pics_path / 'all_ocs_{}'.format(signal_num[3:6])
+    png_name = test.signal_pics_path / 'all_ocs_{}.png'.format(pl_density)
     fig.savefig(png_name)
     plt.close(fig)
 
@@ -104,7 +104,7 @@ def exp_oscillogramms(exp_num):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
 
-exp_oscillogramms(210407)
+#exp_oscillogramms(210414)
 
 
 def magnetron_osc(exp_num):
@@ -134,9 +134,11 @@ def magnetron_osc(exp_num):
 
 
 def file_nums_oscillogramms(exp_num, file_nums):
+    print(file_nums)
     test = ProcessSignal(str(exp_num))
     for file_num in file_nums:
-        file_name = f'str{file_num:03d}.csv'
+        #file_name = f'str{file_num:03d}.csv'
+        file_name = f'str{file_num}.csv'
         data = test.open_file(file_name, reduced=False)
         t, u = data['time'], data['voltage']
         fig = plt.figure(num=1, dpi=150)
@@ -146,13 +148,75 @@ def file_nums_oscillogramms(exp_num, file_nums):
         ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
         ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
         ax.grid(which='both', axis='both')
-        min_y, max_y = np.round(min(u) - 0.25, 0), np.round(max(u) + 0.25, 0)
+        min_y, max_y = min(u) - 0.25, max(u) + 0.25
         ax.set_ylim(bottom=min_y, top=max_y)
         plt.xticks(fontsize=12)
         plt.yticks(fontsize=12)
         plt.title(f'№ {file_num}')
-        png_name = test.signal_pics_path / f'ocs_{file_num:03d}'
+        png_name = test.signal_pics_path / f'ocs_{file_num}.png'
         fig.savefig(png_name)
         plt.close(fig)
 
-#file_nums_oscillogramms(210407, [87,88])
+
+#file_nums_oscillogramms(210414, [f'{i:03d}' for i in range(65, 91)])
+
+
+def pl_densities_from_excel(exp_num):
+    proc = ProcessSignal(f'{exp_num}')
+    all_files_list = os.listdir(proc.exp_file_path)
+    file_nums_list = [f'{i:03d}' for i in range(65, 91)]
+    pl_d_vals = []
+    for file_num in file_nums_list:
+        file_name = f'str{file_num}.csv'
+        pl_density = proc.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+        pl_d_vals.append(pl_density)
+    return(pl_d_vals)
+
+#pl_densities_from_excel(210414)
+
+
+def file_nums_oscillogramms_density_vals(exp_num, file_nums):
+    print(file_nums)
+    test = ProcessSignal(str(exp_num))
+    density_vals = pl_densities_from_excel(exp_num)
+    for i, file_num in enumerate(file_nums):
+        #file_name = f'str{file_num:03d}.csv'
+        file_name = f'str{file_num}.csv'
+        data = test.open_file(file_name, reduced=False)
+        t, u = data['time'], data['voltage']
+        fig = plt.figure(num=1, dpi=150)
+        ax = fig.add_subplot(111)
+        print(f'Creating a picture {file_num}...')
+        line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
+        ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
+        ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
+        ax.grid(which='both', axis='both')
+        min_y, max_y = min(u) - 0.25, max(u) + 0.25
+        ax.set_ylim(bottom=min_y, top=max_y)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.title(f'№ {file_num}, n={density_vals[i]}')
+        png_name = test.signal_pics_path / f'ocs_{file_num}_{density_vals[i]}.png'
+        fig.savefig(png_name)
+        plt.close(fig)
+
+
+file_nums_oscillogramms_density_vals(210414, [f'{i:03d}' for i in range(65, 91)])
+
+
+def rename_osc_files(exp_num):
+    proc = ProcessSignal(f'{exp_num}')
+    all_files_list = os.listdir(proc.signal_pics_path)
+    osc_files_list = [all_files_list[i] for i in range(len(all_files_list)) if 'png' in all_files_list[i] and 'all' not in all_files_list[i]]
+    print('files:', osc_files_list)
+    density_vals = pl_densities_from_excel(exp_num)
+    for i, file in enumerate(osc_files_list):
+        new_file_name = file.replace(f'{file}', f'{file[4:7]}_{density_vals[i]}.png')
+        old_file_path = proc.signal_pics_path / file
+        new_file_path = proc.signal_pics_path / new_file_name
+        os.rename(old_file_path, new_file_path)
+
+
+#rename_osc_files(210414)
+
+

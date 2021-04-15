@@ -10,7 +10,7 @@ import matplotlib.gridspec as gridspec
 import datetime
 from ProcessClass_10 import ProcessSignal
 
-folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210322\CSV')
+folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210326\CSV')
 
 all_files = os.listdir(folder_path)
 files = [all_files[i] for i in range(len(all_files)) if 'csv' in all_files[i]]
@@ -106,7 +106,7 @@ def enveloped_part(t, u, max_part=0.2):
         pass
 
 
-def signal_periods(num, time, voltage, table=False):
+def signal_periods(num, time, voltage, table=True):
     '''
     file_data = open_file(file)
     if 'in000' in file:
@@ -261,7 +261,7 @@ def phase_pisc_by_nums(file_nums):
 
 
 #phase_pisc_by_nums([56, 59, 62, 112, 114, 86, 95, 90])
-phase_pisc_by_nums([124])
+phase_pisc_by_nums([116])
 
 def average_phase_diff(delay_array=True, pic_type='opposite'):
     today_data = datetime.date.today().strftime("%Y%m%d")[2::]

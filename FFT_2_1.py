@@ -5,23 +5,24 @@ import openpyxl as xl
 import os
 
 
-def rename_csv_files(exp_num):
+def rename_csv_files(exp_num, old_part, new_part):
     proc = ProcessSignal(f'{exp_num}')
     all_files_list = os.listdir(proc.exp_file_path)
-    csv_files_list = [all_files_list[i] for i in range(len(all_files_list)) if 'csv' in all_files_list[i] and len(all_files_list[i])==13]
+    csv_files_list = [all_files_list[i] for i in range(len(all_files_list)) if 'csv' in all_files_list[i]]
+    #csv_files_list = [all_files_list[i] for i in range(len(all_files_list)) if 'csv' in all_files_list[i] and len(all_files_list[i])==13]
     print(csv_files_list)
     for file in csv_files_list:
-        new_file_name = file.replace('061', '')
+        new_file_name = file.replace(old_part, new_part)
         old_file_path = proc.exp_file_path / file
         new_file_path = proc.exp_file_path / new_file_name
         os.rename(old_file_path, new_file_path)
-#rename_csv_files(210407)
+#rename_csv_files(210414, old_part='-e', new_part='')
 
 
 def write_file(exp_num):
     fft_test = ProcessSignal(f'{exp_num}')
     fft_test.files_classification()
-#write_file(210407)
+#write_file(210414)
 
 
 def load_text():
@@ -35,7 +36,7 @@ def load_text():
 def write_csv(exp_num):
     test = ProcessSignal(f'{exp_num}')
     test.reduce_fft(time_0=90e-9, prelim_view=False)
-write_csv(210407)
+#write_csv(210414)
 
 
 def load_red_csv():

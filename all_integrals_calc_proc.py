@@ -3,11 +3,12 @@ import openpyxl as excel
 import matplotlib.pyplot as plt
 from ProcessClass_10 import ProcessSignal
 from pathlib import Path
+from openpyxl.utils import get_column_letter
 
 
 def magnetron_integrals_bloc(exp_num, file_nums, central_freq=2.714, band_half_width=0.05):
     proc = ProcessSignal(str(exp_num))
-    shot_nums, density_vals, full_ints, peak_ints = [], [], [], []
+    shot_nums, density_vals, full_ints, peak_ints, exp_nums = [], [], [], [], []
     for num in file_nums:
         file_name = f'str{num}.csv'
         file = proc.open_file(file_name, reduced=True)
@@ -30,6 +31,7 @@ def magnetron_integrals_bloc(exp_num, file_nums, central_freq=2.714, band_half_w
         shot_nums.append(num)
         full_ints.append(full_int)
         peak_ints.append(peak_int)
+        exp_nums.append(exp_num)
 
     sorted_inds = np.argsort(density_vals)
     density_vals = np.asarray(density_vals)[sorted_inds]
@@ -39,7 +41,8 @@ def magnetron_integrals_bloc(exp_num, file_nums, central_freq=2.714, band_half_w
     integrals_dict = {'nums': shot_nums,
                       'density': density_vals,
                       'full_ints': full_ints,
-                      'peak_ints': peak_ints}
+                      'peak_ints': peak_ints,
+                      'exp_nums': exp_nums}
     return integrals_dict
 
 
@@ -66,15 +69,74 @@ def noise_integrals_block(exp_num, file_nums):
     density_vals = np.asarray(density_vals)[sorted_inds]
     shot_nums = np.asarray(shot_nums)[sorted_inds]
     full_ints = np.asarray(full_ints)[sorted_inds]
-
     integrals_dict = {'nums': shot_nums,
                       'density': density_vals,
                       'full_ints': full_ints}
     return integrals_dict
 
 
-def fill_excel_table():
-    pass
+def fill_excel_table(exp_num, dict_list, proc):
+    ex_table = excel.Workbook()
+    ex_table.create_sheet(title='Integral', index=0)
+    sheet = ex_table['Integral']
+    letter_ind = 1
+    for dict in dict_list:
+        nums, density_vals, full_integrals, peak_integrals = dict['nums'], dict['density'], dict['full_ints'], dict['peak_ints']
+        sheet[f'{get_column_letter(letter_ind)}1'] = 'Номер'
+        sheet[f'{get_column_letter(letter_ind+1)}1'] = 'Плотность плазмы, отн.ед.'
+        sheet[f'{get_column_letter(letter_ind+2)}1'] = 'W_f0, *10-8'
+        sheet[f'{get_column_letter(letter_ind+3)}1'] = 'W_1, *10-8'
+
+        for k in range(full_integrals.size):
+            cell = sheet.cell(row=k + 2, column=letter_ind)
+            cell.value = int(nums[k])
+            cell = sheet.cell(row=k + 2, column=letter_ind+1)
+            cell.value = density_vals[k]
+            cell = sheet.cell(row=k + 2, column=letter_ind+2)
+            cell.value = peak_integrals[k]
+            cell = sheet.cell(row=k + 2, column=letter_ind+3)
+            cell.value = full_integrals[k] - peak_integrals[k]
+        letter_ind += 5
+        path = proc.excel_folder_path / f'Integrals_{exp_num}.xlsx'
+        ex_table.save(path)
+
+
+def multi_integral_excel(exp_num):
+    proc = ProcessSignal(str(exp_num))
+    csv_types = proc.read_type_file()
+    csv_signals = csv_types['signal_files']
+    csv_signal_nums = csv_types['signal_nums']
+    excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
+    magnetron_nums = excel_dicts['magnetron']
+    list_1 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if int(excel_dicts['magnetron'][i]) < 61]
+    list_2 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if 60 < int(excel_dicts['magnetron'][i]) < 109]
+    list_3 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if
+              108 < int(excel_dicts['magnetron'][i]) < 123]
+    list_4 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if
+              122 < int(excel_dicts['magnetron'][i]) < 131]
+    list_5 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if
+              130 < int(excel_dicts['magnetron'][i]) < 175]
+    lists = [list_1, list_2, list_3, list_4, list_5]
+    dict_list = [magnetron_integrals_bloc(exp_num, lists[i]) for i in range(len(lists))]
+    fill_excel_table(exp_num, dict_list, proc)
+
+
+#multi_integral_excel(210412)
+
+
+def magnetron_exp(exp_num):
+    proc = ProcessSignal(str(exp_num))
+    csv_types = proc.read_type_file()
+    csv_signals = csv_types['signal_files']
+    csv_signal_nums = csv_types['signal_nums']
+    excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
+    magnetron_nums = excel_dicts['magnetron']
+    lists = [magnetron_nums]
+    dict_list = [magnetron_integrals_bloc(exp_num, lists[i]) for i in range(len(lists))]
+    fill_excel_table(exp_num, dict_list, proc)
+
+
+magnetron_exp(210414)
 
 
 def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
@@ -209,7 +271,7 @@ def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
     ex_table.save(path)
 
 
-all_integrals_proc(210407)
+#all_integrals_proc(210407)
 
 
 def read_excel_integrals(exp_nums):
