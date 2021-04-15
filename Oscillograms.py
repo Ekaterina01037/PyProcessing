@@ -3,6 +3,7 @@ from ProcessClass_10 import ProcessSignal
 import os
 from pathlib import Path
 import numpy as np
+import matplotlib.gridspec as gridspec
 
 
 def oscillograms():
@@ -179,24 +180,37 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
     print(file_nums)
     test = ProcessSignal(str(exp_num))
     density_vals = pl_densities_from_excel(exp_num)
-    for i, file_num in enumerate(file_nums):
-        #file_name = f'str{file_num:03d}.csv'
-        file_name = f'str{file_num}.csv'
-        data = test.open_file(file_name, reduced=False)
-        t, u = data['time'], data['voltage']
-        fig = plt.figure(num=1, dpi=150)
-        ax = fig.add_subplot(111)
-        print(f'Creating a picture {file_num}...')
-        line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
-        ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
-        ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
-        ax.grid(which='both', axis='both')
-        min_y, max_y = min(u) - 0.25, max(u) + 0.25
-        ax.set_ylim(bottom=min_y, top=max_y)
-        plt.xticks(fontsize=12)
-        plt.yticks(fontsize=12)
-        plt.title(f'№ {file_num}, n={density_vals[i]}')
-        png_name = test.signal_pics_path / f'ocs_{file_num}_{density_vals[i]}.png'
+    density_mtrx = np.reshape(np.asarray(density_vals), (int(len(density_vals)/2), 2))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(density_vals)/2), 2))
+    print(density_mtrx[0, ])
+    central_freq = 2.714E9
+    for j in range(nums_mtrx.shape[0]):
+        gs = gridspec.GridSpec(2, 1)
+        fig = plt.figure(num=1, dpi=200, figsize=[11.69, 12.27])
+        for i in range(nums_mtrx.shape[1]):
+            file_num = f'{nums_mtrx[j, i]}'
+            file_name = f'str{file_num}.csv'
+            data = test.open_file(file_name, reduced=False)
+            if int(nums_mtrx[j, i]) % 2 == 0:
+                t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3
+            else:
+                t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+            filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
+            u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+
+            ax = fig.add_subplot(gs[i, 0])
+            print(f'Creating a picture {file_num}...')
+            line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
+            line2, = ax.plot(t / 1e-9, u_filt, linewidth=0.7)
+            ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
+            ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
+            ax.grid(which='both', axis='both')
+            min_y, max_y = min(u) - 0.25, max(u) + 0.25
+            ax.set_ylim(bottom=min_y, top=max_y)
+            plt.xticks(fontsize=12)
+            plt.yticks(fontsize=12)
+            ax.set_title(f'№ {file_num}, n={density_mtrx[j, i]}')
+        png_name = test.signal_pics_path / f'ocs_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}_{density_mtrx[j,0]}.png'
         fig.savefig(png_name)
         plt.close(fig)
 
