@@ -99,13 +99,14 @@ def exp_oscillogramms(exp_num):
     test = ProcessSignal(str(exp_num))
     signal_nums_0 = test.read_type_file()['signal_files']
     print(signal_nums_0)
-    signal_nums = [signal_nums_0[i] for i in range(len(signal_nums_0)) if signal_nums_0[i] != 'str015.csv']
-    voltage_nums = test.read_type_file()['voltage_files']
+    signal_nums = [signal_nums_0[i] for i in range(len(signal_nums_0)) if 126 < int(signal_nums_0[i][3:6]) < 157]
+    voltage_nums_0 = test.read_type_file()['voltage_files']
+    voltage_nums = [voltage_nums_0[i] for i in range(len(voltage_nums_0)) if 126 < int(voltage_nums_0[i][3:6]) < 157]
     for element in zip(signal_nums, voltage_nums):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
 
-#exp_oscillogramms(210414)
+#exp_oscillogramms(210422)
 
 
 def magnetron_osc(exp_num):
@@ -131,7 +132,7 @@ def magnetron_osc(exp_num):
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(210326)
+#magnetron_osc(210422)
 
 
 def file_nums_oscillogramms(exp_num, file_nums):
@@ -162,24 +163,26 @@ def file_nums_oscillogramms(exp_num, file_nums):
 #file_nums_oscillogramms(210414, [f'{i:03d}' for i in range(65, 91)])
 
 
-def pl_densities_from_excel(exp_num):
+def pl_densities_from_excel(exp_num, file_nums_list):
     proc = ProcessSignal(f'{exp_num}')
     all_files_list = os.listdir(proc.exp_file_path)
-    file_nums_list = [f'{i:03d}' for i in range(65, 91)]
     pl_d_vals = []
     for file_num in file_nums_list:
         file_name = f'str{file_num}.csv'
-        pl_density = proc.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+        try:
+            pl_density = proc.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+        except:
+            pl_density = 0
         pl_d_vals.append(pl_density)
     return(pl_d_vals)
 
-#pl_densities_from_excel(210414)
+#pl_densities_from_excel(210414, [f'{i:03d}' for i in range(121, 151)])
 
 
 def file_nums_oscillogramms_density_vals(exp_num, file_nums):
     print(file_nums)
     test = ProcessSignal(str(exp_num))
-    density_vals = pl_densities_from_excel(exp_num)
+    density_vals = pl_densities_from_excel(exp_num, file_nums)
     density_mtrx = np.reshape(np.asarray(density_vals), (int(len(density_vals)/2), 2))
     nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(density_vals)/2), 2))
     print(density_mtrx[0, ])
@@ -215,7 +218,67 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
         plt.close(fig)
 
 
-file_nums_oscillogramms_density_vals(210414, [f'{i:03d}' for i in range(65, 91)])
+#file_nums_oscillogramms_density_vals(210422, [f'{i:03d}' for i in range(159, 191)])
+
+
+def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=False):
+    print(file_nums)
+    start_time = start_time * 1e-9
+    end_time = start_time + 10e-9
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    if density_vals:
+        density_vals = pl_densities_from_excel(exp_num, file_nums)
+        density_mtrx = np.reshape(np.asarray(density_vals), (int(len(density_vals) / 2), 2))
+    for j in range(nums_mtrx.shape[0]):
+        fig = plt.figure(num=1, dpi=200)
+        for i in range(nums_mtrx.shape[1]):
+            file_num = f'{nums_mtrx[j, i]}'
+            file_name = f'str{file_num}.csv'
+            data = test.open_file(file_name, reduced=False)
+            if int(file_num) % 2 == 0:
+                t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3
+                '''
+                filt_freq_min, filt_freq_max = 2.714e9 - 15e6, 2.714e9 + 15e6
+                u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                '''
+                time_inds = np.logical_and(t >= start_time, t <= end_time)
+            else:
+                time_shift = 4.2 * 1e-9
+                t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                '''
+                filt_freq_min, filt_freq_max = 2.714e9 - 15e6, 2.714e9 + 15e6
+                u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                '''
+                time_inds = np.logical_and(t >= start_time - time_shift, t <= end_time - time_shift)
+            time_part_centr, u_part_centr = t[time_inds], u[time_inds]
+            ax = fig.add_subplot(111)
+            print(f'Creating a picture {file_num}...')
+            if int(file_num) % 2 == 0:
+                line1, = ax.plot(time_part_centr / 1e-9, u_part_centr, linewidth=1.2, color='red')
+                line1.set_label('Сигнал на оси')
+                #min_y, max_y = min(u_part_centr) - 0.25, max(u_part_centr) + 0.25
+            else:
+                line1, = ax.plot((time_part_centr + time_shift) / 1e-9, u_part_centr, linewidth=1.2)
+                line1.set_label('Сигнал сбоку')
+                min_y, max_y = min(u_part_centr) - 0.25, max(u_part_centr) + 0.25
+        ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
+        ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
+        ax.grid(which='both', axis='both')
+        ax.set_ylim(bottom=min_y, top=max_y)
+        ax.legend()
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        if density_vals:
+            ax.set_title(f'№ {nums_mtrx[j, 0]} - {nums_mtrx[j, 1]} (без магнетрона), n={density_mtrx[j, i]}, {start_time / 1e-9} - {(start_time /1e-9) + 10}ns')
+        else:
+            ax.set_title(f'№ {nums_mtrx[j, 0]} - {nums_mtrx[j, 1]}, {start_time / 1e-9} - {(start_time / 1e-9) + 10} ns')
+        png_name = test.signal_pics_path / f'{exp_num}_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}_без_магнетрона_{start_time / 1e-9}ns.png'
+        fig.savefig(png_name)
+        plt.close(fig)
+
+
+file_nums_oscillogramms_10_ns(210421, [f'{i:03d}' for i in range(169, 171)], start_time=10, density_vals=True)
 
 
 def rename_osc_files(exp_num):

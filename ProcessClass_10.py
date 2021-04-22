@@ -605,7 +605,7 @@ class ProcessSignal:
         p_freq_1 = p_freq[ind_fake_freqs_1]
         amp_fft_1 = amp_fft[ind_fake_freqs_1]
 
-        ind_fake_freqs_2 = np.logical_or(p_freq_1 <= 2.499e9, 2.501e9 <= p_freq_1)
+        ind_fake_freqs_2 = np.logical_or(p_freq_1 <= 2.495e9, 2.505e9 <= p_freq_1)
         p_freq_2 = p_freq_1[ind_fake_freqs_2]
         amp_fft_2 = amp_fft_1[ind_fake_freqs_2]
 
