@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from ProcessClass_10 import ProcessSignal
 from pathlib import Path
 from openpyxl.utils import get_column_letter
+from scipy.stats import tstd
 
 
 def magnetron_integrals_bloc(exp_num, file_nums, central_freq=2.714, band_half_width=0.05):
@@ -139,18 +140,20 @@ def magnetron_exp(exp_num):
 #magnetron_exp(210421)
 
 
-def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
+def all_integrals_proc(exp_num, start_num=0, end_num=0, table=True, central_freq=2.714, band_half_width=0.05):
     proc = ProcessSignal(str(exp_num))
     csv_types = proc.read_type_file()
     csv_signals = csv_types['signal_files']
     csv_signal_nums = csv_types['signal_nums']
     excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
-    #noise_nums = excel_dicts['noise']
-    noise_nums = [excel_dicts['noise'][i] for i in range(len(excel_dicts['noise'])) if 20 < int(excel_dicts['noise'][i]) < 117]
-    magnetron_nums = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if 20 < int(excel_dicts['magnetron'][i]) < 117]
+    if end_num == 0:
+        noise_nums = excel_dicts['noise']
+        magnetron_nums = excel_dicts['magnetron']
+    else:
+        noise_nums = [excel_dicts['noise'][i] for i in range(len(excel_dicts['noise'])) if start_num < int(excel_dicts['noise'][i]) < end_num]
+        magnetron_nums = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if start_num < int(excel_dicts['magnetron'][i]) < end_num]
+    print('Noise:', noise_nums, '\n', 'Amplifier:', magnetron_nums)
 
-    print('Noise nums:', noise_nums)
-    print('Magnetron nums:', magnetron_nums)
     nums, n_s, full_ints, peak_ints = [], [], [], []
     noise_ints, noise_ns, n_nums = [], [], []
     for signal in csv_signals:
@@ -193,28 +196,7 @@ def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
             dt_2 = (t[-1] - t[0]) ** 2
 
             pl_density = proc.read_excel(signal)['dicts'][num]['Ток плазмы, А']
-            '''
-            integral = np.round(proc.e_square(t, u) / 1e-8, 3)
-            filt_int = np.round(proc.e_square(t, u_filt) / 1e-8, 3)
-            freqs, amps = proc.fft_amplitude(t, u)['frequency'], proc.fft_amplitude(t, u)['amplitude']
-            peak_inds = np.logical_and(freqs >= f_low, freqs <= f_high)
-            p_freqs, p_amps = freqs[peak_inds], amps[peak_inds]
 
-            full_int = np.round(dt_2 * proc.e_square(freqs, amps) / 2e-8, 3)
-            peak_int = np.round(dt_2 * proc.e_square(p_freqs, p_amps) / 2e-8, 3)
-
-            plt.plot(t, u)
-            plt.plot(t, u_filt)
-            plt.title(f'{num, pl_density}')
-            #plt.show()
-
-            noise_ns.append(pl_density)
-            n_nums.append(num)
-            noise_ints.append(full_int)
-            n_peak_ints.append(peak_int)
-            '''
-
-            integral = np.round(proc.e_square(t, u) / 1e-8, 3)
             freqs, amps = proc.fft_amplitude(t, u)['frequency'], proc.fft_amplitude(t, u)['amplitude']
             noise_int = np.round(dt_2 * proc.e_square(freqs, amps) / 2e-8, 3)
             noise_ints.append(noise_int)
@@ -222,48 +204,152 @@ def all_integrals_proc(exp_num, central_freq=2.714, band_half_width=0.05):
             n_nums.append(num)
 
     ind_sort = np.argsort(np.asarray(n_s))
-    ns = np.asarray(n_s)[ind_sort]
-    nums = np.asarray(nums)[ind_sort]
-    full_ints, peak_ints = np.asarray(full_ints)[ind_sort], np.asarray(peak_ints)[ind_sort]
+    ns_sort = np.asarray(n_s)[ind_sort]
+    nums_sort = np.asarray(nums)[ind_sort]
+    full_ints_sort, peak_ints_sort = np.asarray(full_ints)[ind_sort], np.asarray(peak_ints)[ind_sort]
+    print('Sorted amplifier numbers:', nums_sort)
 
     n_ind_sort = np.argsort(np.asarray(noise_ns))
-    noise_ns, n_nums, noise_ints = np.asarray(noise_ns)[n_ind_sort], np.asarray(n_nums)[n_ind_sort], np.asarray(noise_ints)[n_ind_sort]
+    noise_ns_sort, n_nums_sort, noise_ints_sort = np.asarray(noise_ns)[n_ind_sort], np.asarray(n_nums)[n_ind_sort], np.asarray(noise_ints)[n_ind_sort]
+    print('Sorted noise numbers:', n_nums_sort)
+    if table:
+        ex_table = excel.Workbook()
+        ex_table.create_sheet(title='Integral', index=0)
+        sheet = ex_table['Integral']
+        sheet['A1'] = 'Номер(шум)'
+        sheet['B1'] = 'Плотность плазмы, отн.ед.'
+        sheet['C1'] = 'W_f0, *10-8'
+        sheet['D1'] = 'W_1, *10-8'
+
+        sheet['F1'] = 'Номер'
+        sheet['G1'] = 'Плотность плазмы, отн.ед.'
+        sheet['H1'] = 'W_2, *10-8'
+
+        for z in range(full_ints_sort.size):
+            cell = sheet.cell(row=z + 2, column=1)
+            cell.value = int(nums_sort[z])
+            cell = sheet.cell(row=z + 2, column=2)
+            cell.value = ns_sort[z]
+            cell = sheet.cell(row=z + 2, column=3)
+            cell.value = peak_ints_sort[z]
+            cell = sheet.cell(row=z + 2, column=4)
+            cell.value = full_ints_sort[z] - peak_ints_sort[z]
+
+        for k in range(noise_ints_sort.size):
+            cell = sheet.cell(row=k + 2, column=6)
+            cell.value = int(n_nums_sort[k])
+            cell = sheet.cell(row=k + 2, column=7)
+            cell.value = noise_ns_sort[k]
+            cell = sheet.cell(row=k + 2, column=8)
+            cell.value = noise_ints_sort[k]
+
+        path = proc.excel_folder_path / f'Integrals_{exp_num}_all.xlsx'
+        ex_table.save(path)
+    else:
+        noise_dict = {'nums': n_nums_sort,
+                      'density_vals': noise_ns_sort,
+                      'w_2': noise_ints_sort}
+        magnetron_dict = {'nums': nums_sort,
+                          'density_vals': ns_sort,
+                          'w_f0': peak_ints_sort,
+                          'w_1': full_ints_sort - peak_ints_sort}
+        return noise_dict, magnetron_dict
+
+
+#all_integrals_proc(210423, table=True, start_num=0, end_num=0)
+
+def stats_bonds(density_vals):
+    min_round, max_round = np.modf(density_vals[0])[1], np.modf(density_vals[-1])[1]
+    if min_round + 0.5 > density_vals[0]:
+        first_bond = min_round
+    else:
+        first_bond = min_round + 0.5
+    if max_round + 0.5 > density_vals[-1]:
+        last_bond = max_round + 0.5
+    else:
+        last_bond = max_round + 1
+    bonds = np.arange(first_bond, last_bond + 0.5, 0.5)
+    return bonds
+
+
+def calc_stats(bonds, density_vals, integral_1, integral_2=[0]):
+    av_densities, std_dens, av_int_1_list, std_int_1_list, av_int_2_list, std_int_2_list = [], [], [], [], [], []
+    for i, bond in enumerate(bonds):
+        mask = np.logical_and(bonds[i] <= density_vals, density_vals < bonds[i + 1])
+        density_vals = density_vals[mask]
+        av_int_1 = integral_1[mask]
+        av_int_2 = integral_2[mask]
+        av_density, std_density = np.mean(density_vals), tstd(density_vals)
+        av_int_1, std_int_1 = np.mean(av_int_1), tstd(av_int_1)
+        av_int_2, std_int_2 = np.mean(av_int_2), tstd(av_int_2)
+        av_densities.append(av_density)
+        std_dens.append(std_density)
+        av_int_1_list.append(av_int_1_list)
+        std_int_1_list.append(std_int_1)
+        av_int_2_list.append(av_int_2_list)
+        std_int_2_list.append(std_int_2)
+    average_dict = {'density_vals': np.asarray(av_densities),
+                    'std_dens': np.asarray(std_dens),
+                    'int_1': np.asarray(av_int_1_list),
+                    'std_1': np.asarray(std_int_1_list),
+                    'int_2': np.asarray(av_int_2_list),
+                    'std_2': np.asarray(std_int_2_list)}
+    return average_dict
+
+
+def all_integrals_stats():
+    noise_dict, magnetron_dict = all_integrals_proc(210423, table=False, start_num=0, end_num=0)
+    noise_nums, noise_density_vals, w_2 = noise_dict['nums'], noise_dict['density_vals'], noise_dict['w_2']
+    m_nums, m_density_vals, w_f0, w_1 = magnetron_dict['nums'], magnetron_dict['density_vals'], magnetron_dict['w_f0'], magnetron_dict['w_1']
+    noise_bonds = stats_bonds(noise_density_vals)
+    m_bonds = stats_bonds(m_density_vals)
+    av_noise_dict = calc_stats(noise_bonds, noise_density_vals, w_2, np.zeros(len(w_2)))
+    av_noise_density, std_noise_dens, av_w_2, std_w_2 = av_noise_dict['density_vals'], av_noise_dict['std_dens'], av_noise_dict['int_1'], av_noise_dict['std_1']
+    av_m_dict = calc_stats(m_bonds, m_density_vals, w_f0, w_1)
+    av_m_density, std_m_dens, av_w_f0, std_w_f0, av_w_1, std_w_1 = av_m_dict['density_vals'], av_m_dict['std_dens'], av_m_dict['int_1'], av_m_dict['std_1'], av_m_dict['int_2'], av_m_dict['std_2']
+
     ex_table = excel.Workbook()
     ex_table.create_sheet(title='Integral', index=0)
     sheet = ex_table['Integral']
-    sheet['A1'] = 'Номер(шум)'
-    sheet['B1'] = 'Плотность плазмы, отн.ед.'
-    sheet['C1'] = 'W_f0, *10-8'
-    sheet['D1'] = 'W_1, *10-8'
+    sheet['A1'] = '<n>'
+    sheet['B1'] = 'delta_n'
+    sheet['C1'] = '<W_f0>, *10-8'
+    sheet['D1'] = 'delta_W_f0, *10-8'
+    sheet['E1'] = '<W_1>, *10-8'
+    sheet['F1'] = 'delta_W_1, *10-8'
 
-    sheet['F1'] = 'Номер'
-    sheet['G1'] = 'Плотность плазмы, отн.ед.'
-    sheet['I1'] = 'W_2, *10-8'
+    sheet['H1'] = '<n>'
+    sheet['I1'] = 'delta_n'
+    sheet['J1'] = 'W_2, *10-8'
+    sheet['K1'] = 'delta_W_2, *10-8'
 
-    for z in range(full_ints.size):
+    for z in range(av_m_density.size):
         cell = sheet.cell(row=z + 2, column=1)
-        cell.value = int(nums[z])
+        cell.value = av_m_density[z]
         cell = sheet.cell(row=z + 2, column=2)
-        cell.value = ns[z]
+        cell.value = std_m_dens[z]
         cell = sheet.cell(row=z + 2, column=3)
-        cell.value = peak_ints[z]
+        cell.value = av_w_f0[z]
         cell = sheet.cell(row=z + 2, column=4)
-        cell.value = full_ints[z] - peak_ints[z]
+        cell.value = std_w_f0[z]
+        cell = sheet.cell(row=z + 2, column=5)
+        cell.value = av_w_1[z]
+        cell = sheet.cell(row=z + 2, column=6)
+        cell.value = std_w_1[z]
 
-    for k in range(noise_ints.size):
-        cell = sheet.cell(row=k + 2, column=6)
-        cell.value = int(noise_nums[k])
-        cell = sheet.cell(row=k + 2, column=7)
-        cell.value = noise_ns[k]
+    for k in range(av_noise_density.size):
         cell = sheet.cell(row=k + 2, column=8)
-        cell.value = noise_ints[k]
-
-    path = proc.excel_folder_path / f'Integrals_{exp_num}_1.xlsx'
+        cell.value = av_noise_density[k]
+        cell = sheet.cell(row=k + 2, column=9)
+        cell.value = std_noise_dens[k]
+        cell = sheet.cell(row=k + 2, column=10)
+        cell.value = av_w_2[k]
+        cell = sheet.cell(row=k + 2, column=11)
+        cell.value = std_w_2[k]
+    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210423\Excel\Integrals_stats.xlsx'
     ex_table.save(path)
 
-
-#all_integrals_proc(210421)
-
+all_integrals_stats()
 
 def read_excel_integrals(exp_nums):
     nums, n_s, integrals_w_0, integrals_w_1 = [], [], [], []

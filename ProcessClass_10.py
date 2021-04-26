@@ -779,7 +779,10 @@ class ProcessSignal:
                             fft_results = self.fft_amplitude(use_t, filtered_u)
                         else:
                             fft_results = self.fft_amplitude(use_t, use_u)
-                        pl_density = self.read_excel(interest_nums)['dicts'][signal_num]['Ток плазмы, А']
+                        try:
+                            pl_density = self.read_excel(interest_nums)['dicts'][signal_num]['Ток плазмы, А']
+                        except:
+                            pl_density = self.read_excel(interest_nums)['dicts'][str(int(signal_num) - 1)]['Ток плазмы, А']
                         freq = fft_results['frequency']
                         amp = fft_results['amplitude']
 

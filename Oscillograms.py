@@ -90,23 +90,26 @@ def one_signal_oscillogramm(signal_num, voltage_num, exp_num, central_freq=2.71e
         plt.title('№ {}, n = {}'.format(signal_num[3:6], pl_density))
     '''
     plt.title(f'№ {signal_num[3:6]}-{voltage_num[3:6]},n = {pl_density}')
-    png_name = test.signal_pics_path / 'all_ocs_{}.png'.format(pl_density)
+    png_name = test.signal_pics_path / f'all_ocs_{pl_density}_{signal_num[3:6]}.png'
     fig.savefig(png_name)
     plt.close(fig)
 
 
-def exp_oscillogramms(exp_num):
+def exp_oscillogramms(exp_num, last_num=0, first_num=0):
     test = ProcessSignal(str(exp_num))
     signal_nums_0 = test.read_type_file()['signal_files']
-    print(signal_nums_0)
-    signal_nums = [signal_nums_0[i] for i in range(len(signal_nums_0)) if 126 < int(signal_nums_0[i][3:6]) < 157]
     voltage_nums_0 = test.read_type_file()['voltage_files']
-    voltage_nums = [voltage_nums_0[i] for i in range(len(voltage_nums_0)) if 126 < int(voltage_nums_0[i][3:6]) < 157]
+    if last_num == 0:
+        signal_nums, voltage_nums = signal_nums_0, voltage_nums_0
+    else:
+        signal_nums = [signal_nums_0[i] for i in range(len(signal_nums_0)) if first_num < int(signal_nums_0[i][3:6]) < last_num]
+        voltage_nums = [voltage_nums_0[i] for i in range(len(voltage_nums_0)) if first_num < int(voltage_nums_0[i][3:6]) < last_num]
+    print('Signals:', signal_nums)
     for element in zip(signal_nums, voltage_nums):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
 
-#exp_oscillogramms(210422)
+#exp_oscillogramms(210423, last_num=61, first_num=0)
 
 
 def magnetron_osc(exp_num):
@@ -132,7 +135,7 @@ def magnetron_osc(exp_num):
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(210422)
+#magnetron_osc(210423)
 
 
 def file_nums_oscillogramms(exp_num, file_nums):
@@ -213,15 +216,15 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
             ax.set_title(f'№ {file_num}, n={density_mtrx[j, i]}')
-        png_name = test.signal_pics_path / f'ocs_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}_{density_mtrx[j,0]}.png'
+        png_name = test.signal_pics_path / f'ocs_{density_mtrx[j,0]}_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}.png'
         fig.savefig(png_name)
         plt.close(fig)
 
 
-#file_nums_oscillogramms_density_vals(210422, [f'{i:03d}' for i in range(159, 191)])
+#file_nums_oscillogramms_density_vals(210423, [f'{i:03d}' for i in range(187, 221)])
 
 
-def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=False):
+def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=False, filt=False):
     print(file_nums)
     start_time = start_time * 1e-9
     end_time = start_time + 10e-9
@@ -244,7 +247,7 @@ def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=F
                 '''
                 time_inds = np.logical_and(t >= start_time, t <= end_time)
             else:
-                time_shift = 4.2 * 1e-9
+                time_shift = 4.35 * 1e-9
                 t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
                 '''
                 filt_freq_min, filt_freq_max = 2.714e9 - 15e6, 2.714e9 + 15e6
@@ -270,15 +273,15 @@ def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=F
         plt.xticks(fontsize=12)
         plt.yticks(fontsize=12)
         if density_vals:
-            ax.set_title(f'№ {nums_mtrx[j, 0]} - {nums_mtrx[j, 1]} (без магнетрона), n={density_mtrx[j, i]}, {start_time / 1e-9} - {(start_time /1e-9) + 10}ns')
+            ax.set_title(f'№ {nums_mtrx[j, 0]} - {nums_mtrx[j, 1]} (магнетрон), n={density_mtrx[j, i]}, {int(start_time / 1e-9)} - {(start_time /1e-9) + 10}ns')
         else:
-            ax.set_title(f'№ {nums_mtrx[j, 0]} - {nums_mtrx[j, 1]}, {start_time / 1e-9} - {(start_time / 1e-9) + 10} ns')
-        png_name = test.signal_pics_path / f'{exp_num}_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}_без_магнетрона_{start_time / 1e-9}ns.png'
+            ax.set_title(f'№ {nums_mtrx[j, 0]} - {nums_mtrx[j, 1]}, {int(start_time / 1e-9)} - {(start_time / 1e-9) + 10} ns')
+        png_name = test.signal_pics_path / f'{exp_num}_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}_магнетрон_{int(start_time / 1e-9)}ns.png'
         fig.savefig(png_name)
         plt.close(fig)
 
 
-file_nums_oscillogramms_10_ns(210421, [f'{i:03d}' for i in range(169, 171)], start_time=10, density_vals=True)
+file_nums_oscillogramms_10_ns(210423, [f'{i:03d}' for i in range(165, 167)], start_time=120, density_vals=True)
 
 
 def rename_osc_files(exp_num):
