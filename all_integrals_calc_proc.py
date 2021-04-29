@@ -140,18 +140,14 @@ def magnetron_exp(exp_num):
 #magnetron_exp(210421)
 
 
-def all_integrals_proc(exp_num, start_num=0, end_num=0, table=True, central_freq=2.714, band_half_width=0.05):
+def all_integrals_proc(exp_num, nums, table=True, central_freq=2.714, band_half_width=0.05):
     proc = ProcessSignal(str(exp_num))
     csv_types = proc.read_type_file()
     csv_signals = csv_types['signal_files']
     csv_signal_nums = csv_types['signal_nums']
     excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
-    if end_num == 0:
-        noise_nums = excel_dicts['noise']
-        magnetron_nums = excel_dicts['magnetron']
-    else:
-        noise_nums = [excel_dicts['noise'][i] for i in range(len(excel_dicts['noise'])) if start_num < int(excel_dicts['noise'][i]) < end_num]
-        magnetron_nums = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if start_num < int(excel_dicts['magnetron'][i]) < end_num]
+    noise_nums = [str(int(excel_dicts['noise'][i]) + 1) for i in range(len(excel_dicts['noise'])) if int(excel_dicts['noise'][i]) + 1 in nums]
+    magnetron_nums = [str(int(excel_dicts['magnetron'][i]) + 1) for i in range(len(excel_dicts['magnetron'])) if int(excel_dicts['magnetron'][i]) + 1 in nums]
     print('Noise:', noise_nums, '\n', 'Amplifier:', magnetron_nums)
 
     nums, n_s, full_ints, peak_ints = [], [], [], []
@@ -243,7 +239,7 @@ def all_integrals_proc(exp_num, start_num=0, end_num=0, table=True, central_freq
             cell = sheet.cell(row=k + 2, column=8)
             cell.value = noise_ints_sort[k]
 
-        path = proc.excel_folder_path / f'Integrals_{exp_num}_all.xlsx'
+        path = proc.excel_folder_path / f'Integrals_{exp_num}_2_antennas.xlsx'
         ex_table.save(path)
     else:
         noise_dict = {'nums': n_nums_sort,
@@ -256,7 +252,7 @@ def all_integrals_proc(exp_num, start_num=0, end_num=0, table=True, central_freq
         return noise_dict, magnetron_dict
 
 
-#all_integrals_proc(210423, table=True, start_num=0, end_num=0)
+all_integrals_proc(210423, nums=[i for i in range(132, 221, 2)], table=True)
 
 def stats_bonds(density_vals):
     min_round, max_round = np.modf(density_vals[0])[1], np.modf(density_vals[-1])[1]
@@ -349,7 +345,7 @@ def all_integrals_stats():
     path = r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210423\Excel\Integrals_stats.xlsx'
     ex_table.save(path)
 
-all_integrals_stats()
+#all_integrals_stats()
 
 def read_excel_integrals(exp_nums):
     nums, n_s, integrals_w_0, integrals_w_1 = [], [], [], []

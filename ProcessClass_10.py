@@ -134,9 +134,9 @@ class ProcessSignal:
     def reduce_fft(self, time_0=100e-9, time_interval=262e-9, prelim_view=False):
         csv_types = self.read_type_file()
         csv_signals = csv_types['signal_files']
-        #csv_signals = ['str097.csv']
+        csv_signals = ['str206.csv']
         csv_gin_files = csv_types['voltage_files']
-        time_1 = time_0 + time_interval + 13e-9
+        time_1 = time_0 + time_interval + 100e-9
         for j, csv_signal in enumerate(csv_signals):
             file = self.open_file(csv_signal)
             raw_time, raw_voltage = file['time'], file['voltage']
@@ -782,7 +782,7 @@ class ProcessSignal:
                         try:
                             pl_density = self.read_excel(interest_nums)['dicts'][signal_num]['Ток плазмы, А']
                         except:
-                            pl_density = self.read_excel(interest_nums)['dicts'][str(int(signal_num) - 1)]['Ток плазмы, А']
+                            pl_density = self.read_excel(interest_nums)['dicts'][f'{(int(signal_num) - 1):03d}']['Ток плазмы, А']
                         freq = fft_results['frequency']
                         amp = fft_results['amplitude']
 

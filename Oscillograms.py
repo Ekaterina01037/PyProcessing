@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import numpy as np
 import matplotlib.gridspec as gridspec
+import csv
 
 
 def oscillograms():
@@ -198,9 +199,9 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
             file_name = f'str{file_num}.csv'
             data = test.open_file(file_name, reduced=False)
             if int(nums_mtrx[j, i]) % 2 == 0:
-                t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3
-            else:
                 t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+            else:
+                t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3.16
             filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
             u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
 
@@ -221,7 +222,46 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
         plt.close(fig)
 
 
-#file_nums_oscillogramms_density_vals(210423, [f'{i:03d}' for i in range(187, 221)])
+#file_nums_oscillogramms_density_vals(210421, [f'{i:03d}' for i in range(159, 191)])
+
+
+def write_2_antennas_osc_csv(exp_num, file_nums):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    central_freq = 2.714E9
+    for j in range(nums_mtrx.shape[0]):
+        antennas_data_dict = {}
+        for i in range(nums_mtrx.shape[1]):
+            file_num = f'{nums_mtrx[j, i]}'
+            file_name = f'str{file_num}.csv'
+            data = test.open_file(file_name, reduced=False)
+            filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
+            if int(nums_mtrx[j, i]) % 2 == 0:
+                t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                antennas_data_dict['t_main'], antennas_data_dict['u_main'] = t, u
+                antennas_data_dict['u_filt_main'] = u_filt
+            else:
+                t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3.16
+                u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                antennas_data_dict['t'], antennas_data_dict['u'] = t, u
+                antennas_data_dict['u_filt'] = u_filt
+        print(f'Writing {nums_mtrx[j, i]} csv file...')
+        print(antennas_data_dict.keys())
+
+        dif_file_path = test.exp_file_path / '2_antennas_CSV'
+        dif_file_path.mkdir(parents=True, exist_ok=True)
+        file = open(str(dif_file_path / f'{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}.csv'), 'w', newline='')
+        with file:
+            writer = csv.writer(file)
+            writer.writerow(['t_main(s)', 'V_main(V)', 'V_main_filt(V)', 't(s)', 'V(V)', 'V_filt(V)'])
+            for i in range(1, max(len(antennas_data_dict['t_main']), len(antennas_data_dict['t']))):
+                writer.writerow([antennas_data_dict['t_main'][i], antennas_data_dict['u_main'][i], antennas_data_dict['u_filt_main'][i],
+                                 antennas_data_dict['t'][i], antennas_data_dict['u'][i], antennas_data_dict['u_filt'][i]])
+
+
+write_2_antennas_osc_csv(210423, [165, 166])
 
 
 def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=False, filt=False):
@@ -281,7 +321,7 @@ def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=F
         plt.close(fig)
 
 
-file_nums_oscillogramms_10_ns(210423, [f'{i:03d}' for i in range(165, 167)], start_time=120, density_vals=True)
+#file_nums_oscillogramms_10_ns(210423, [f'{i:03d}' for i in range(165, 167)], start_time=120, density_vals=True)
 
 
 def rename_osc_files(exp_num):

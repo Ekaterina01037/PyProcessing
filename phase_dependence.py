@@ -10,14 +10,17 @@ import matplotlib.gridspec as gridspec
 import datetime
 from ProcessClass_10 import ProcessSignal
 
-folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210326\CSV')
+folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021')
 
 all_files = os.listdir(folder_path)
 files = [all_files[i] for i in range(len(all_files)) if 'csv' in all_files[i]]
 
 
-def open_file(file_name):
-    file_path = folder_path / '{}'.format(file_name)
+def open_file(exp_num, file_name, magnetron=False):
+    if magnetron:
+        file_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210322\str097_m210302.csv')
+    else:
+        file_path = folder_path / f'{exp_num}' / f'{file_name}'
     t = []
     u = []
     with open(file_path) as File:
@@ -52,6 +55,7 @@ def cut_files():
                     writer.writerow([0, 0, 0, t_cut[i], u_cut[i]])
 
 #cut_files()
+
 
 def signal_envelope(t, u, time_frame=1e-8):
     dt = t[1] - t[0]
@@ -106,16 +110,8 @@ def enveloped_part(t, u, max_part=0.2):
         pass
 
 
-def signal_periods(num, time, voltage, table=True):
-    '''
-    file_data = open_file(file)
-    if 'in000' in file:
-        time, voltage = file_data['time'], file_data['voltage']
-    else:
-        time, voltage = file_data['time'], file_data['voltage']
-    #plt.plot(time, voltage)
-    #plt.show()
-    '''
+def signal_periods(time, voltage, num=0, table=True):
+    time, voltage = np.asarray(time), np.asarray(voltage)
     voltage_signs = np.sign(voltage)
     m = 0
     l = 0
@@ -159,13 +155,53 @@ def signal_periods(num, time, voltage, table=True):
             cell.value = zeros[z]
             cell = sheet.cell(row=z + 2, column=2)
             cell.value = periods[z]
-        path = folder_path / f'{num}.xlsx'
+        path = folder_path / f'1.xlsx'
         ex_table.save(path)
     else:
         periods_dict = {'zero_times': zeros, 'periods': periods}
         return periods_dict
 
 #signal_periods()
+
+
+def magnetron_periods():
+    m_file_data = open_file(0, 0, magnetron=True)
+    m_t, m_v = m_file_data['time'], m_file_data['voltage'] - np.mean(m_file_data['voltage'])
+    m_inds = m_t >= 400e-9
+    m_t_plato, m_v_plato = m_t[m_inds], m_v[m_inds]
+    m_periods = signal_periods(m_t_plato, m_v_plato, table=False)
+    return m_periods
+
+
+def write_phase_csv(exp_num, file_nums):
+    print(f'Experiment {exp_num}')
+    m_periods_dict = magnetron_periods()
+    m_zero_times, m_periods = m_periods_dict['zero_times'], m_periods_dict['periods']
+    for num in file_nums:
+        file_name = f'str{num:03d}.csv'
+        file_data = open_file(exp_num, file_name)
+        t, v = file_data['time'], file_data['voltage']
+        inds_plato = t > 90e-9
+        t_plato, v_plato = t[inds_plato], v[inds_plato]
+        periods_dict = signal_periods(t_plato, v_plato, table=False)
+        zero_times, periods = periods_dict['zero_times'], periods_dict['periods']
+        zero_times = [zero_times[i] for i in range(len(m_zero_times))]
+        periods = [periods[i] for i in range(len(m_periods))]
+        difference = m_periods - periods
+
+        print(f'Writing {num} csv file...')
+
+        dif_file_path = folder_path / f'{exp_num}' / 'Period_CSV'
+        dif_file_path.mkdir(parents=True, exist_ok=True)
+        file = open(str(dif_file_path / f'{num:03d}.csv'), 'w', newline='')
+        with file:
+            writer = csv.writer(file)
+            writer.writerow(['t_m(s)', 'T_m(s)', 't_amp(s)', 'T_amp(s)', 'T_m - T_amp(s)'])
+            for i in range(1, len(zero_times)):
+                writer.writerow([m_zero_times[i], m_periods[i], zero_times[i], periods[i], difference[i]])
+
+
+write_phase_csv(210413, [10, 12, 14, 52])
 
 
 def phase_pics(full_time_plot=False):
@@ -261,7 +297,7 @@ def phase_pisc_by_nums(file_nums):
 
 
 #phase_pisc_by_nums([56, 59, 62, 112, 114, 86, 95, 90])
-phase_pisc_by_nums([116])
+#phase_pisc_by_nums([116])
 
 def average_phase_diff(delay_array=True, pic_type='opposite'):
     today_data = datetime.date.today().strftime("%Y%m%d")[2::]
