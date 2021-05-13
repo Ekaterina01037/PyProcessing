@@ -102,6 +102,54 @@ def fill_excel_table(exp_num, dict_list, proc):
         ex_table.save(path)
 
 
+def energy_4_experiments():
+    exps = [210119, 210204, 210211, 210304]
+    l_col = [20, 26.5, 34.5, 20]
+    n_low, n_max = 9, 11
+    num_of_pts_list, relat_w_list, delta_relat_w_list, delta_dens_list = [], [], [], []
+    fig = plt.figure(num=1, dpi=300)
+    ax = fig.add_subplot(111)
+    for i, exp in enumerate(exps):
+        proc = ProcessSignal(str(exp))
+        csv_types = proc.read_type_file()
+        csv_signals = csv_types['signal_files']
+        csv_signal_nums = csv_types['signal_nums']
+        excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
+        magnetron_nums = excel_dicts['magnetron']
+        magnetron_dict = magnetron_integrals_bloc(exp, magnetron_nums)
+        nums = magnetron_dict['nums']
+        dens_vals = magnetron_dict['density']
+        noise = magnetron_dict['full_ints'] - magnetron_dict['peak_ints']
+        peak = magnetron_dict['peak_ints']
+        relat_w = peak / noise
+        exp_nums = magnetron_dict['exp_nums']
+
+        ind_mask = np.logical_and(dens_vals >= n_low, dens_vals <= n_max)
+        dens_vals, relat_w, exp_num = dens_vals[ind_mask], relat_w[ind_mask], exp_nums[0]
+        num_of_pts = dens_vals.size
+        print('Number of points for avereging:', num_of_pts)
+        relat_w, delta_relat_w = np.mean(relat_w), tstd(relat_w)
+        delta_dens_vals = tstd(dens_vals)
+        num_of_pts_list.append(num_of_pts)
+        relat_w_list.append(relat_w)
+        delta_relat_w_list.append(delta_relat_w)
+        delta_dens_list.append(delta_dens_vals)
+        label = f'{exp}, точки:{num_of_pts}'
+        ax.errorbar(l_col[i], relat_w, delta_relat_w, marker='o', label=label)
+
+    ax.legend(loc='upper left')
+    ax.grid(which='both', axis='both')
+    ax.set_xlabel(r'$L_{кол}, см$')
+    ax.set_ylabel(r'$<W_{f0} / W_{1}>$')
+    ax.set_title(r'Зависимость W_f0 / W_1 от L_кол. Плотности {} - {} отн.ед.'.format(n_low, n_max))
+    fig_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210423\Pictures')
+    png_name = fig_path / f'{n_low}_{n_max}'
+    fig.savefig(png_name)
+    plt.close(fig)
+
+energy_4_experiments()
+
+
 def multi_integral_excel(exp_num):
     proc = ProcessSignal(str(exp_num))
     csv_types = proc.read_type_file()
@@ -252,7 +300,7 @@ def all_integrals_proc(exp_num, nums, table=True, central_freq=2.714, band_half_
         return noise_dict, magnetron_dict
 
 
-all_integrals_proc(210423, nums=[i for i in range(132, 221, 2)], table=True)
+#all_integrals_proc(210423, nums=[i for i in range(132, 221, 2)], table=True)
 
 def stats_bonds(density_vals):
     min_round, max_round = np.modf(density_vals[0])[1], np.modf(density_vals[-1])[1]

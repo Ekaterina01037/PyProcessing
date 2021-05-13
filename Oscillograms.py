@@ -242,11 +242,17 @@ def write_2_antennas_osc_csv(exp_num, file_nums):
                 u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
                 antennas_data_dict['t_main'], antennas_data_dict['u_main'] = t, u
                 antennas_data_dict['u_filt_main'] = u_filt
+                plt.plot(t, u)
             else:
-                t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3.16
+                #t, u = data['time'], (data['voltage'] - np.mean(data['voltage'])) / 3.16
+                t, u = data['time'], (data['voltage'] - np.mean(data['voltage']))
                 u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
                 antennas_data_dict['t'], antennas_data_dict['u'] = t, u
                 antennas_data_dict['u_filt'] = u_filt
+                plt.plot(t + 4.347E-9, u)
+
+        plt.show()
+        '''
         print(f'Writing {nums_mtrx[j, i]} csv file...')
         print(antennas_data_dict.keys())
 
@@ -259,9 +265,65 @@ def write_2_antennas_osc_csv(exp_num, file_nums):
             for i in range(1, max(len(antennas_data_dict['t_main']), len(antennas_data_dict['t']))):
                 writer.writerow([antennas_data_dict['t_main'][i], antennas_data_dict['u_main'][i], antennas_data_dict['u_filt_main'][i],
                                  antennas_data_dict['t'][i], antennas_data_dict['u'][i], antennas_data_dict['u_filt'][i]])
+        '''
+
+#write_2_antennas_osc_csv(210423, [165, 166])
 
 
-write_2_antennas_osc_csv(210423, [165, 166])
+def two_antennas_max_table(exp_num, file_nums):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    central_freq = 2.714E9
+    compare_pts = [75 * 1e-9, 155 * 1e-9, 200 * 1e-9]
+    for pt in compare_pts:
+        for j in range(nums_mtrx.shape[0]):
+            antennas_data_dict = {}
+            for i in range(nums_mtrx.shape[1]):
+                file_num = f'{nums_mtrx[j, i]}'
+                file_name = f'str{file_num}.csv'
+                data = test.open_file(file_name, reduced=False)
+                filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
+                if int(nums_mtrx[j, i]) % 2 == 0:
+                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    antennas_data_dict['t_main'], antennas_data_dict['u_main'] = t, u
+                    antennas_data_dict['u_filt_main'] = u_filt
+                    max_inds_1 = np.logical_and(t >= pt, t <= pt + 0.35E-9)
+                    t_max_part_1, u_max_part_1 = t[max_inds_1], u[max_inds_1]
+                    u_max_1, t_max_1 = np.max(u_max_part_1), t_max_part_1[np.argmax(u_max_part_1)]
+                    max_inds_2 = np.logical_and(t > t_max_1, t <= t_max_1 + 0.4E-9)
+                    t_max_part_2, u_max_part_2 = t[max_inds_2][1:], u[max_inds_2][1:]
+                    t_max_2 = t_max_part_2[np.argmax(u_max_part_2)]
+                    min_inds = np.logical_and(t >= t_max_1, t <= t_max_2)
+                    t_min_part, u_min_part = t[min_inds], u[min_inds]
+                    u_min, t_min = np.min(u_min_part), t_min_part[np.argmin(u_min_part)]
+                    delta_u_main = u_max_1 - u_min
+                    plt.plot(t, u)
+                    plt.plot(t_min, u_min,  marker='o')
+                    plt.plot(t_max_1, u_max_1,  marker='o')
+                else:
+                    t, u = data['time'] + 4.347E-9, (data['voltage'] - np.mean(data['voltage']))
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    antennas_data_dict['t'], antennas_data_dict['u'] = t, u
+                    antennas_data_dict['u_filt'] = u_filt
+                    max_inds_1 = np.logical_and(t >= pt, t <= pt + 0.35E-9)
+                    t_max_part_1, u_max_part_1 = t[max_inds_1], u[max_inds_1]
+                    u_max_1, t_max_1 = np.max(u_max_part_1), t_max_part_1[np.argmax(u_max_part_1)]
+                    max_inds_2 = np.logical_and(t > t_max_1, t <= t_max_1 + 0.4E-9)
+                    t_max_part_2, u_max_part_2 = t[max_inds_2][1:], u[max_inds_2][1:]
+                    t_max_2 = t_max_part_2[np.argmax(u_max_part_2)]
+                    min_inds = np.logical_and(t >= t_max_1, t <= t_max_2)
+                    t_min_part, u_min_part = t[min_inds], u[min_inds]
+                    u_min, t_min = np.min(u_min_part), t_min_part[np.argmin(u_min_part)]
+                    delta_u_sub = u_max_1 - u_min
+                    plt.plot(t, u)
+                    plt.plot(t_min, u_min, marker='o')
+                    plt.plot(t_max_1, u_max_1, marker='o')
+            u_relat = delta_u_main / delta_u_sub
+            print(u_relat)
+            plt.show()
+two_antennas_max_table(210423, [185, 186])
 
 
 def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=False, filt=False):
