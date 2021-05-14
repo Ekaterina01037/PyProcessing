@@ -104,11 +104,12 @@ def fill_excel_table(exp_num, dict_list, proc):
 
 def energy_4_experiments():
     exps = [210119, 210204, 210211, 210304]
-    l_col = [20, 26.5, 34.5, 20]
+    l_col = [19.5, 26.5, 34.5, 20.5]
     n_low, n_max = 9, 11
-    num_of_pts_list, relat_w_list, delta_relat_w_list, delta_dens_list = [], [], [], []
     fig = plt.figure(num=1, dpi=300)
-    ax = fig.add_subplot(111)
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212)
+    colors = ['orange', 'mediumblue', 'limegreen', 'red']
     for i, exp in enumerate(exps):
         proc = ProcessSignal(str(exp))
         csv_types = proc.read_type_file()
@@ -121,31 +122,31 @@ def energy_4_experiments():
         dens_vals = magnetron_dict['density']
         noise = magnetron_dict['full_ints'] - magnetron_dict['peak_ints']
         peak = magnetron_dict['peak_ints']
-        relat_w = peak / noise
+        noise_to_full = noise / magnetron_dict['full_ints']
         exp_nums = magnetron_dict['exp_nums']
 
         ind_mask = np.logical_and(dens_vals >= n_low, dens_vals <= n_max)
-        dens_vals, relat_w, exp_num = dens_vals[ind_mask], relat_w[ind_mask], exp_nums[0]
-        num_of_pts = dens_vals.size
-        print('Number of points for avereging:', num_of_pts)
-        relat_w, delta_relat_w = np.mean(relat_w), tstd(relat_w)
-        delta_dens_vals = tstd(dens_vals)
-        num_of_pts_list.append(num_of_pts)
-        relat_w_list.append(relat_w)
-        delta_relat_w_list.append(delta_relat_w)
-        delta_dens_list.append(delta_dens_vals)
-        label = f'{exp}, точки:{num_of_pts}'
-        ax.errorbar(l_col[i], relat_w, delta_relat_w, marker='o', label=label)
+        dens_vals, noise_to_full, exp_num = dens_vals[ind_mask], noise_to_full[ind_mask], exp_nums[0]
+        peak = peak[ind_mask]
+        print(f'Creating plot for experiment {exp}...')
+        col_len = [l_col[i]] * noise_to_full.size
+        print(col_len)
+        ax2.plot(col_len, peak,  marker='.', linestyle=' ', color=colors[i])
+        ax1.plot(col_len, noise_to_full, marker='.', linestyle=' ', color=colors[i])
 
-    ax.legend(loc='upper left')
-    ax.grid(which='both', axis='both')
-    ax.set_xlabel(r'$L_{кол}, см$')
-    ax.set_ylabel(r'$<W_{f0} / W_{1}>$')
-    ax.set_title(r'Зависимость W_f0 / W_1 от L_кол. Плотности {} - {} отн.ед.'.format(n_low, n_max))
+    ax1.grid(which='both', axis='both')
+    ax1.set_ylabel(r'$W_{1} / W$')
+    ax1.set_xlim(left=17)
+    ax2.grid(which='both', axis='both')
+    ax2.set_xlabel(r'$L_{кол}, см$')
+    ax2.set_ylabel(r'$W_{f0}$')
+    ax2.set_xlim(left=17)
+    ax1.set_title(r' Плотности {} - {} отн.ед.'.format(n_low, n_max))
     fig_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\210423\Pictures')
-    png_name = fig_path / f'{n_low}_{n_max}'
+    png_name = fig_path / f'4_exp_energy(17)'
     fig.savefig(png_name)
     plt.close(fig)
+    plt.show()
 
 energy_4_experiments()
 
