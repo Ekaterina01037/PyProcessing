@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.gridspec as gridspec
 import csv
 import openpyxl as excel
+from openpyxl.utils import get_column_letter
+from scipy.stats import tstd
 
 
 def oscillograms():
@@ -111,7 +113,7 @@ def exp_oscillogramms(exp_num, last_num=0, first_num=0):
         one_signal_oscillogramm(element[0], element[1], exp_num)
 
 
-#exp_oscillogramms(210423, last_num=61, first_num=0)
+#exp_oscillogramms(210708, first_num=0)
 
 
 def magnetron_osc(exp_num):
@@ -125,19 +127,76 @@ def magnetron_osc(exp_num):
             fig = plt.figure(num=1, dpi=150)
             ax = fig.add_subplot(111)
             print(f'Creating a picture {file}...')
-            line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
-            ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
-            ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
+            #line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
+            line1, = ax.plot(t / 1e-9, u, linewidth=1.2)
+            ax.set_xlabel(r'$Время, нс$', fontsize=12, fontweight='black')
+            ax.set_ylabel(r'$Напряжение, В$', fontsize=12, fontweight='black')
             ax.grid(which='both', axis='both')
-            ax.set_ylim(bottom=-4, top=4)
+            min_y, max_y = min(u) - 0.05, max(u) + 0.05
+            ax.set_ylim(bottom=min_y, top=max_y)
+            #ax.set_ylim(bottom=-4, top=4)
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
-            plt.title(f'№ {file[3:6]}')
+            plt.title(f'№ {file}')
+            plt.show()
             png_name = test.signal_pics_path / 'ocs_{}'.format(file[3:6])
+            #fig.savefig(png_name)
+            plt.close(fig)
+
+#magnetron_osc(171222)
+
+def double_magnetron_osc(exp_num):
+    test = ProcessSignal(str(exp_num))
+    path = r'C:\Users\d_Nice\Documents\SignalProcessing\2021\{}'.format(str(exp_num))
+    file_list = os.listdir(path)
+    print(file_list)
+    file_list_1 = [file_list[3 + i * 4] for i in range(0, 9)]
+    file_list_2 = [file_list[4 + i * 4] for i in range(0, 9)]
+    for i, file in enumerate(file_list_1):
+        if 'str' in file:
+            data = test.open_file(file, reduced=False)
+            t, u = data['time'], data['voltage']
+            data_2 = test.open_file(file_list_2[i], reduced=False)
+            t_2, u_2 = data_2['time'], data_2['voltage']
+            fig = plt.figure(num=1, dpi=150)
+            ax = fig.add_subplot(111)
+            print(f'Creating a picture {file}...')
+            #line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
+            line1, = ax.plot(t / 1e-9, u, linewidth=1.2, color='orange')
+            line2, = ax.plot(t_2 / 1e-9, u_2, linewidth=1.2, color='darkmagenta')
+            line1.set_label('Ch_1')
+            line2.set_label('Ch_3')
+            ax.set_xlabel(r'$Время, нс$', fontsize=12, fontweight='black')
+            ax.set_ylabel(r'$Напряжение, В$', fontsize=12, fontweight='black')
+            ax.grid(which='both', axis='both')
+            min_y, max_y = min(u) - 0.05, max(u) + 0.05
+            ax.set_ylim(bottom=min_y, top=max_y)
+            ax.legend()
+            #ax.set_ylim(bottom=-4, top=4)
+            plt.xticks(fontsize=12)
+            plt.yticks(fontsize=12)
+            plt.title(f'№ {file[3:6]}_{file_list_2[i][3:6]}')
+            png_name = test.signal_pics_path / 'ocs_{}_{}'.format(file[3:6], file_list_2[i][3:6])
             fig.savefig(png_name)
             plt.close(fig)
 
-#magnetron_osc(210423)
+#double_magnetron_osc(210528)
+
+
+def shot_series_nums(exp_num):
+    excel_fpath = r"C:\Users\d_Nice\Documents\SignalProcessing\2021\{}\{}.xlsx".format(exp_num, exp_num)
+    wb = excel.load_workbook(excel_fpath)
+    sheet = wb['Лист1']
+    row_max = sheet.max_row
+    row_min = 1
+    for i in range(1, row_max):
+        cell = sheet.cell(row=i, column=1)
+        cell_row_val = cell.value
+        if cell_row_val == 'Номер файла' and row_min == 1:
+            row_min = i
+    first_row = [sheet.cell(row=i, column=1).value for i in range(row_min, row_max)]
+    second_row = [sheet.cell(row=i, column=2).value for i in range(row_min, row_max)]
+    str_inds = [i for i in range(len(second_row)) if type(second_row[i]) == 'str']
 
 
 def file_nums_oscillogramms(exp_num, file_nums):
@@ -155,7 +214,7 @@ def file_nums_oscillogramms(exp_num, file_nums):
         ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
         ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
         ax.grid(which='both', axis='both')
-        min_y, max_y = min(u) - 0.25, max(u) + 0.25
+        min_y, max_y = min(u) - 0.05, max(u) + 0.05
         ax.set_ylim(bottom=min_y, top=max_y)
         plt.xticks(fontsize=12)
         plt.yticks(fontsize=12)
@@ -165,7 +224,7 @@ def file_nums_oscillogramms(exp_num, file_nums):
         plt.close(fig)
 
 
-#file_nums_oscillogramms(210414, [f'{i:03d}' for i in range(65, 91)])
+#file_nums_oscillogramms(210707, [f'{i:03d}' for i in range(133, 188)])
 
 
 def pl_densities_from_excel(exp_num, file_nums_list):
@@ -183,14 +242,31 @@ def pl_densities_from_excel(exp_num, file_nums_list):
 
 #pl_densities_from_excel(210414, [f'{i:03d}' for i in range(121, 151)])
 
+def comments_from_excel(exp_num, file_nums_list):
+    proc = ProcessSignal(f'{exp_num}')
+    all_files_list = os.listdir(proc.exp_file_path)
+    comments = []
+    for file_num in file_nums_list:
+        file_name = f'str{file_num}.csv'
+        try:
+            comment = proc.read_excel(file_name)['dicts'][file_num]['Комментарий']
+        except:
+            comment = ' '
+        comments.append(comment)
+    return(comments)
+
+#comments_from_excel(210414, [f'{i:03d}' for i in range(121, 151)])
+
 
 def file_nums_oscillogramms_density_vals(exp_num, file_nums):
     print(file_nums)
     test = ProcessSignal(str(exp_num))
     density_vals = pl_densities_from_excel(exp_num, file_nums)
+    comments = comments_from_excel(exp_num, file_nums)
+    comment_mtrx = np.reshape(np.asarray(comments), (int(len(comments)/2), 2))
     density_mtrx = np.reshape(np.asarray(density_vals), (int(len(density_vals)/2), 2))
-    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(density_vals)/2), 2))
-    print(density_mtrx[0, ])
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums)/2), 2))
+    #print(density_mtrx[0, ])
     central_freq = 2.714E9
     for j in range(nums_mtrx.shape[0]):
         gs = gridspec.GridSpec(2, 1)
@@ -212,19 +288,26 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
             line2, = ax.plot(t / 1e-9, u_filt, linewidth=0.7)
             ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
             ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
-            ax.grid(which='both', axis='both')
             min_y, max_y = min(u) - 0.25, max(u) + 0.25
+            min_y, max_y = -4, 4
+            major_ticks = np.arange(-4, 4, 0.5)
+            minor_ticks = np.arange(-4, 4, 0.1)
+            ax.set_yticks(major_ticks)
+            ax.set_yticks(minor_ticks, minor=True)
+            ax.grid(which='both', axis='both')
             ax.set_ylim(bottom=min_y, top=max_y)
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
-            ax.set_title(f'№ {file_num}, n={density_mtrx[j, i]}')
-        png_name = test.signal_pics_path / f'ocs_{density_mtrx[j,0]}_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}.png'
+            ax.set_title(f'{exp_num}, № {file_num}, n={density_mtrx[j, i]}, {comment_mtrx[j, i]}')
+            #ax.set_title(f'{exp_num}, № {file_num}')
+        #png_name = test.signal_pics_path / f'ocs_{density_mtrx[j,0]}_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}.png'
+        png_name = test.signal_pics_path / f'ocs_{nums_mtrx[j, 0]}_{nums_mtrx[j, 1]}_{comment_mtrx[j, i][:6]}.png'
         fig.savefig(png_name)
         plt.close(fig)
 
-
-file_nums_oscillogramms_density_vals(210423, [f'{i:03d}' for i in range(131, 187)])
-
+exception_list = [139, 140]
+#exception_list = []
+#file_nums_oscillogramms_density_vals(210707, [f'{i:03d}' for i in range(156, 158) if i not in exception_list])
 
 def write_2_antennas_osc_csv(exp_num, file_nums):
     print(f'Experiment {exp_num}')
@@ -287,185 +370,29 @@ def find_zeros(time, voltage):
             if voltage_signs[j] != voltage_signs[j + 1] and voltage_signs[j + 1] != 0:
                 zero_inds.append(j)
                 m += 1
-    time_part_max, volt_part_max = time[zero_inds[0]:zero_inds[1]], voltage[zero_inds[0]:zero_inds[1]]
-    time_part_min, volt_part_min = time[zero_inds[1]:zero_inds[2]], voltage[zero_inds[1]:zero_inds[2]]
-    #print(zero_inds)
-    ind_max, ind_min = np.argmax(volt_part_max), np.argmin(volt_part_min)
-    time_max, volt_max = time_part_max[ind_max], volt_part_max[ind_max]
-    time_min, volt_min = time_part_min[ind_min], volt_part_min[ind_min]
-    #plt.plot(time, voltage)
-    #plt.plot(time_part_min, volt_part_min)
-    #plt.plot(time_part_max, volt_part_max)
-    #plt.show()
-    max_min_dict = {'time_max': time_max,
-                    'time_min': time_min,
-                    'volt_max': volt_max,
-                    'volt_min': volt_min}
-    return max_min_dict
+    print(zero_inds)
+    try:
+        time_part_max, volt_part_max = time[zero_inds[0]:zero_inds[1]], voltage[zero_inds[0]:zero_inds[1]]
+        time_part_min, volt_part_min = time[zero_inds[1]:zero_inds[2]], voltage[zero_inds[1]:zero_inds[2]]
+
+        ind_max, ind_min = np.argmax(volt_part_max), np.argmin(volt_part_min)
+        time_max, volt_max = time_part_max[ind_max], volt_part_max[ind_max]
+        time_min, volt_min = time_part_min[ind_min], volt_part_min[ind_min]
+        #plt.plot(time, voltage)
+        #plt.plot(time_part_min, volt_part_min)
+        #plt.plot(time_part_max, volt_part_max)
+        #plt.show()
+        max_min_dict = {'time_max': time_max,
+                        'time_min': time_min,
+                        'volt_max': volt_max,
+                        'volt_min': volt_min}
+        return max_min_dict
+    except:
+        pass
 
 
-def two_antennas_max_table(exp_num, file_nums):
-    print(f'Experiment {exp_num}')
-    test = ProcessSignal(str(exp_num))
-    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
-    print(nums_mtrx)
-    central_freq = 2.714E9
-    compare_pts = [75 * 1e-9, 155 * 1e-9, 200 * 1e-9]
-
-    ex_table = excel.Workbook()
-    ex_table.create_sheet(title='Integral', index=0)
-    sheet = ex_table['Integral']
-    sheet['A1'] = exp_num
-    sheet['A2'] = 'No (центр/бок)'
-    sheet['B2'] = 'n, отн.ед.'
-    sheet['C1'] = 'Без фильтра'
-    #sheet['С2'] = f't_1 = {np.round(compare_pts[0] / 1e-9, 0)}'
-    sheet['D2'] = f't_2 = {np.round(compare_pts[1] / 1e-9, 0)} c'
-    sheet['E2'] = f't_3 = {np.round(compare_pts[2] / 1e-9, 0)} c'
-
-    sheet['F1'] = 'Фильтрованный'
-    sheet['F2'] = f't_1 = {np.round(compare_pts[0] / 1e-9, 0)} c'
-    sheet['G2'] = f't_2 = {np.round(compare_pts[1] / 1e-9, 0)} c'
-    sheet['H2'] = f't_3 = {np.round(compare_pts[2] / 1e-9, 0)} c'
-
-    for pt in compare_pts:
-        for j in range(nums_mtrx.shape[0]):
-            antennas_data_dict = {}
-            for i in range(nums_mtrx.shape[1]):
-                print(nums_mtrx[j, i], 'pt=', pt)
-                file_num = f'{nums_mtrx[j, i]}'
-                file_name = f'str{file_num}.csv'
-                data = test.open_file(file_name, reduced=False)
-                filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
-                if int(nums_mtrx[j, i]) % 2 == 0:
-                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
-                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
-                    pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
-                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
-                    t, u = t[ind_mask], u[ind_mask]
-                    peak_dict = find_zeros(t, u)
-                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
-                    delta_main = volt_max - volt_min
-
-                    u_filt = u_filt[ind_mask]
-                    filt_dict = find_zeros(t, u_filt)
-                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
-                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
-                    delta_main_filt = volt_max_filt - volt_min_filt
-
-                    cell = sheet.cell(row=j + 3, column=2)
-                    cell.value = f'{pl_density}'
-
-                    plt.plot(t, u)
-                    plt.plot(time_min, volt_min,  marker='o')
-                    plt.plot(time_max, volt_max,  marker='o')
-                else:
-                    t, u = data['time'] + 4.347E-9, (data['voltage'] - np.mean(data['voltage']))
-                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
-                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
-                    t, u = t[ind_mask], u[ind_mask]
-                    peak_dict = find_zeros(t, u)
-                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
-                    delta_sub = volt_max - volt_min
-
-                    u_filt = u_filt[ind_mask]
-                    filt_dict = find_zeros(t, u_filt)
-                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
-                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
-                    delta_sub_filt = volt_max_filt - volt_min_filt
-
-                    plt.plot(t, u_filt)
-                    plt.plot(time_min_filt, volt_min_filt, marker='o')
-                    plt.plot(time_max_filt, volt_max_filt, marker='o')
-            u_relat_filt = delta_main_filt / delta_sub_filt
-            u_relat = delta_main / delta_sub
-
-            if pt == compare_pts[0]:
-                column = 3
-                column_filt = 6
-            elif pt == compare_pts[1]:
-                column = 4
-                column_filt = 7
-            else:
-                column = 5
-                column_filt = 8
-            cell = sheet.cell(row=j + 3, column=column)
-            cell.value = f'{np.round(u_relat, 3)}'
-            cell = sheet.cell(row=j + 3, column=column_filt)
-            cell.value = f'{np.round(u_relat_filt, 3)}'
-
-            print(u_relat_filt)
-            plt.title(nums_mtrx[j, i])
-            #plt.show()
-            cell = sheet.cell(row=j + 3, column=1)
-            cell.value = f'{int(nums_mtrx[j, i]) -1 } / {nums_mtrx[j, i]}'
-
-    path = test.excel_folder_path / f'Ampl_{exp_num}_2_antennas.xlsx'
-    ex_table.save(path)
-#two_antennas_max_table(210423, [f'{i:03d}' for i in range(131, 187)])
-
-
-def two_antennas_ampl_relate(exp_num, file_nums, pts):
-    print(f'Experiment {exp_num}')
-    test = ProcessSignal(str(exp_num))
-    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
-    print(nums_mtrx)
-    central_freq = 2.714E9
-    compare_pts = [pts[i] * 1E-9for i in range(len(pts))]
-    for pt in compare_pts:
-        for j in range(nums_mtrx.shape[0]):
-            for i in range(nums_mtrx.shape[1]):
-                print(nums_mtrx[j, i], 'pt=', pt)
-                file_num = f'{nums_mtrx[j, i]}'
-                file_name = f'str{file_num}.csv'
-                data = test.open_file(file_name, reduced=False)
-                filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
-                if int(nums_mtrx[j, i]) % 2 == 0:
-                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
-                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
-                    pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
-                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
-                    t, u = t[ind_mask], u[ind_mask]
-                    peak_dict = find_zeros(t, u)
-                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
-                    delta_main = volt_max - volt_min
-
-                    u_filt = u_filt[ind_mask]
-                    filt_dict = find_zeros(t, u_filt)
-                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
-                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
-                    delta_main_filt = volt_max_filt - volt_min_filt
-
-                    plt.plot(t, u)
-                    plt.plot(time_min, volt_min,  marker='o')
-                    plt.plot(time_max, volt_max,  marker='o')
-                else:
-                    t, u = data['time'] + 4.347E-9, (data['voltage'] - np.mean(data['voltage']))
-                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
-                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
-                    t, u = t[ind_mask], u[ind_mask]
-                    peak_dict = find_zeros(t, u)
-                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
-                    delta_sub = volt_max - volt_min
-
-                    u_filt = u_filt[ind_mask]
-                    filt_dict = find_zeros(t, u_filt)
-                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
-                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
-                    delta_sub_filt = volt_max_filt - volt_min_filt
-
-                    plt.plot(t, u_filt)
-                    plt.plot(time_min_filt, volt_min_filt, marker='o')
-                    plt.plot(time_max_filt, volt_max_filt, marker='o')
-            u_relat_filt = delta_main_filt / delta_sub_filt
-            u_relat = delta_main / delta_sub
-            print('Отн_без_фильтра:', u_relat)
-            print('Oтн_фильтр:', u_relat_filt)
-
-#two_antennas_ampl_relate(210423, [139, 140], [200, 300, 400, 500, 550])
-
-
-def signal_envelope(t, u, dt, time_frame=1e-8):
+def signal_envelope(t, u, time_frame=1e-8):
+    dt = t[1] - t[0]
     num_of_pts = int(time_frame / dt)
     times = t[::num_of_pts]
     time_step = np.abs(times[0] - times[1])
@@ -484,18 +411,18 @@ def signal_envelope(t, u, dt, time_frame=1e-8):
     return envelope_dict
 
 
-def envelope_max_part(self, t, u, dt, max_part):
-    env = self.signal_envelope(t, u, dt)
+def envelope_part(t, u, max_part):
+    env = signal_envelope(t, u)
     env_t = np.array(env['env_time'])
     env_u = np.array(env['env_voltage'])
     max_env_u = np.max(env_u)
     ind_lim = env_u > max_part * max_env_u
     t_lim = env_t[ind_lim]
-    ind_stop = len(t_lim - 1)
+    ind_stop = len(t_lim-1)
     l = 0
-    for i in range(len(t_lim) - 1):
+    for i in range(len(t_lim)-1):
         if l < 1:
-            if t_lim[i + 1] - t_lim[i] > 90e-9:
+            if t_lim[i+1] - t_lim[i] > 90e-9:
                 ind_stop = i
                 l += 1
     try:
@@ -505,11 +432,773 @@ def envelope_max_part(self, t, u, dt, max_part):
         ind_use = np.logical_and(t >= t_min, t <= t_max)
         t_use = t[ind_use]
         u_use = u[ind_use]
+        plt.plot(t, u)
+        plt.plot(env_t, env_u)
+        plt.plot(t_use, u_use)
+        plt.plot(t_bond, u_zeros, marker='o', color='red', linestyle='')
+        plt.show()
         signal_part_dict = {'signal_time': t_use,
                             'signal_voltage': u_use}
         return signal_part_dict
     except:
         pass
+
+
+def two_antennas_max_table(exp_num, file_nums):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    print(nums_mtrx)
+    central_freq = 2.714E9
+    pts = np.arange(100, 525, 25)
+    compare_pts = [pts[i] * 1E-9 for i in range(len(pts))]
+    col_nums = [i for i in range(3, 3 + len(compare_pts))]
+    print(col_nums)
+    vals_for_mean = []
+
+    ex_table = excel.Workbook()
+    ex_table.create_sheet(title='Integral', index=0)
+    sheet = ex_table['Integral']
+    sheet['A1'] = exp_num
+    sheet['C1'] = 'Без фильтра'
+    sheet['A2'] = 'No (центр/бок)'
+    sheet['B2'] = 'n, отн.ед.'
+    sheet[f'{get_column_letter(3 + len(compare_pts) + 1)}1'] = 'Фильтрованный'
+
+    for n in range(len(col_nums)):
+        letter = get_column_letter(col_nums[n])
+        sheet[f'{letter}2'] = f't_{n + 1} = {np.round(compare_pts[n] / 1e-9, 0)}'
+
+        filt_letter = get_column_letter(col_nums[n] + len(col_nums) + 1)
+        sheet[f'{filt_letter}2'] = f't_{n + 1} = {np.round(compare_pts[n] / 1e-9, 0)} c'
+
+    for k, pt in enumerate(compare_pts):
+        row_ind = 0
+        for j in range(nums_mtrx.shape[0]):
+            antennas_data_dict = {}
+            for i in range(nums_mtrx.shape[1]):
+                print(nums_mtrx[j, i], 'pt=', pt)
+                file_num = f'{nums_mtrx[j, i]}'
+                file_name = f'str{file_num}.csv'
+                data = test.open_file(file_name, reduced=False)
+                filt_freq_min, filt_freq_max = central_freq - 30e6, central_freq + 30e6
+                if int(nums_mtrx[j, i]) % 2 == 0:
+                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+                    comment = test.read_excel(file_name)['dicts'][file_num]['Комментарий']
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_main = volt_max - volt_min
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_main_filt = volt_max_filt - volt_min_filt
+
+                    cell = sheet.cell(row=j + 3, column=2)
+                    cell.value = f'{pl_density}'
+                    cell = sheet.cell(row=1, column=2)
+                    cell.value = f'{comment}'
+
+                    plt.plot(t, u)
+                    plt.plot(time_min, volt_min,  marker='o')
+                    plt.plot(time_max, volt_max,  marker='o')
+                else:
+                    t_shift = 4.347E-9
+                    t_shift = 0
+                    t, u = data['time'] + t_shift, (data['voltage'] - np.mean(data['voltage']))
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_sub = volt_max - volt_min
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_sub_filt = volt_max_filt - volt_min_filt
+
+                    plt.plot(t, u_filt)
+                    plt.plot(time_min_filt, volt_min_filt, marker='o')
+                    plt.plot(time_max_filt, volt_max_filt, marker='o')
+
+            if int(file_num) < 156:
+                u_relat_filt = delta_main_filt / delta_sub_filt
+                u_relat = delta_main / delta_sub
+            else:
+                u_relat_filt = delta_sub_filt / delta_main_filt
+                u_relat = delta_sub / delta_main
+
+            if pt <= 325:
+                vals_for_mean.append(u_relat_filt)
+
+            column = col_nums[k]
+            column_filt = column + len(compare_pts) + 1
+
+            cell = sheet.cell(row=j + 3, column=column)
+            cell.value = f'{np.round(u_relat, 3)}'
+            cell = sheet.cell(row=j+3, column=column_filt)
+            cell.value = f'{np.round(u_relat_filt, 3)}'
+
+            print(u_relat_filt)
+            plt.title(nums_mtrx[j, i])
+            #plt.show()
+            cell = sheet.cell(row=j + 3, column=1)
+            cell.value = f'{int(nums_mtrx[j, i]) -1 } / {nums_mtrx[j, i]}'
+
+    path = test.excel_folder_path / f'{exp_num}_{nums_mtrx[j, i]}_{comment[:6]}_30MHz.xlsx'
+    ex_table.save(path)
+
+
+def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=450, time_step=25):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    print(nums_mtrx)
+    central_freq = 2.714E9
+    pts = np.arange(start_time, end_time + time_step, time_step)
+    compare_pts = [pts[i] * 1E-9 for i in range(len(pts))]
+    col_nums = [i for i in range(3, 3 + len(compare_pts))]
+    comment = test.read_excel(f'str{nums_mtrx[0, 0]}.csv')['dicts'][f'{nums_mtrx[0, 0]}']['Комментарий']
+
+    ex_table = excel.Workbook()
+    ex_table.create_sheet(title='Integral', index=0)
+    sheet = ex_table['Integral']
+    sheet['A1'] = exp_num
+    sheet['B1'] = comment
+    sheet['A2'] = 'Без фильтра'
+    sheet['A3'] = 'No (центр/бок)'
+    sheet['B3'] = 'n, отн.ед.'
+    filt_row = 5 + nums_mtrx.shape[0]
+    sheet[f'A{filt_row}'] = 'Фильтрованный'
+    sheet[f'A{filt_row + 1}'] = 'No (центр/бок)'
+    sheet[f'B{filt_row + 1}'] = 'n, отн.ед.'
+    mean_val_letter = get_column_letter(len(pts) + 3)
+    std_dev_letter = get_column_letter(len(pts) + 4)
+    sheet[f'{mean_val_letter}{filt_row + 1}'] = 'Средн знач'
+    sheet[f'{std_dev_letter}{filt_row + 1}'] = 'Станд откл'
+
+    for n in range(len(col_nums)):
+        letter = get_column_letter(col_nums[n])
+        sheet[f'{letter}3'] = f't_{n + 1} = {np.round(compare_pts[n] / 1e-9, 0)}'
+        sheet[f'{letter}{filt_row + 1}'] = f't_{n + 1} = {np.round(compare_pts[n] / 1e-9, 0)} c'
+    u_1_vals_list = []
+    u_3_vals_list = []
+    for k, pt in enumerate(compare_pts):
+        row_ind = 0
+        for j in range(nums_mtrx.shape[0]):
+            antennas_data_dict = {}
+            for i in range(nums_mtrx.shape[1]):
+                print(nums_mtrx[j, i], 'pt=', pt)
+                file_num = f'{nums_mtrx[j, i]}'
+                file_name = f'str{file_num}.csv'
+                data = test.open_file(file_name, reduced=False)
+                filt_freq_min, filt_freq_max = central_freq - 30e6, central_freq + 30e6
+                if int(nums_mtrx[j, i]) % 2 == 0:
+                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+                    comment = test.read_excel(file_name)['dicts'][file_num]['Комментарий']
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_u_3 = volt_max - volt_min
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_u_3_filt = volt_max_filt - volt_min_filt
+
+                    u_3_vals_list.append(delta_u_3_filt)
+
+                    cell = sheet.cell(row=j + 4, column=2)
+                    cell.value = f'{pl_density}'
+
+                    cell = sheet.cell(row=j + 2 + filt_row, column=2)
+                    cell.value = f'{pl_density}'
+                else:
+                    t_shift = 0
+                    t, u = data['time'] + t_shift, (data['voltage'] - np.mean(data['voltage']))
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_u_1 = volt_max - volt_min
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_u_1_filt = volt_max_filt - volt_min_filt
+
+                    u_1_vals_list.append(delta_u_1_filt)
+
+            cell = sheet.cell(row=j + 4, column=1)
+            cell.value = f'{int(nums_mtrx[j, i]) - 1} / {nums_mtrx[j, i]}'
+
+            cell = sheet.cell(row=j + 2 + filt_row, column=1)
+            cell.value = f'{int(nums_mtrx[j, i]) - 1} / {nums_mtrx[j, i]}'
+
+            if int(file_num) < 156:
+                u_relat_filt = delta_u_1_filt / delta_u_3_filt
+                u_relat = delta_u_1 / delta_u_3
+            else:
+                u_relat_filt = delta_u_3_filt / delta_u_1_filt
+                u_relat = delta_u_3 / delta_u_1
+
+            column = col_nums[k]
+
+            cell = sheet.cell(row=j + 4, column=column)
+            cell.value = np.round(u_relat, 3)
+            cell = sheet.cell(row=j + 2 + filt_row, column=column)
+            cell.value = np.round(u_relat_filt, 3)
+        path = test.excel_folder_path / f'{exp_num}_{nums_mtrx[j, i]}_{comment[:6]}_30MHz_full.xlsx'
+    '''
+    for j in range(nums_mtrx.shape[0]):
+        vals_list = []
+        for i in range(len(pts)):
+            num_row = j + 2 + filt_row
+            num_column = i + 3
+            vals_list.append(float(sheet.cell(row=num_row, column=num_column).value))
+        print(vals_list)
+        mean_val = np.mean(np.asarray(vals_list))
+        tstd_val = tstd(np.asarray(vals_list))
+        cell = sheet.cell(row=j + 2 + filt_row, column=len(compare_pts) + 3)
+        cell.value = np.round(mean_val, 3)
+        cell = sheet.cell(row=j + 2 + filt_row, column=len(compare_pts) + 4)
+        cell.value = np.round(tstd_val, 3)
+    '''
+    ex_table.save(path)
+
+exception_list = [139, 140, 155]
+#exception_list = []
+#two_antennas_integral_table(210707, [f'{i:03d}' for i in range(55, 188) if i not in exception_list])
+
+file_nums = [f'{i:03d}' for i in range(153, 158) if i not in exception_list]
+
+
+def fnums_list(file_nums):
+    exp_num = 210707
+    nums_list_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 4), 4))
+    for nums_list in nums_list_mtrx:
+        two_antennas_max_table_new(exp_num, nums_list)
+
+#fnums_list(file_nums)
+
+
+def polarization_classification():
+    exp_num = 210707
+    exception_list = [139, 140, 155]
+    nums_list = [f'{i:03d}' for i in range(55, 188) if i not in exception_list]
+    test = ProcessSignal(str(exp_num))
+    e_x_nums, e_y_nums = [], []
+    for num in nums_list:
+        file_name = f'str{num}.csv'
+        comment = test.read_excel(file_name)['dicts'][num]['Комментарий']
+        if 'x' in comment:
+            e_x_nums.append(num)
+        elif 'y' in comment:
+            e_y_nums.append(num)
+    polar_dict = {'Ex': e_x_nums,
+                  'Ey': e_y_nums}
+    return polar_dict
+
+
+def average_coordinate_plot(exp_num=210707):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    polar_dict = polarization_classification()
+    nums_list = [f'{i:03d}' for i in range(55, 189) if i not in exception_list]
+    e_y_nums, e_x_nums = polar_dict['Ey'], polar_dict['Ex']
+    print('E_x:', e_x_nums, '\n', 'E_y:', e_y_nums)
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    filt_row = 5 + nums_mtrx.shape[0]
+
+    plot_table = excel.Workbook()
+    plot_table.create_sheet(title='Plot', index=0)
+    table = plot_table['Plot']
+    table['A1'] = exp_num
+    table['A2'] = 'Ex'
+    table['A3'] = 'No'
+    table['B3'] = 'x, см'
+    table['C3'] = 'Средн знач'
+    table['D3'] = 'Станд откл'
+
+    table['F2'] = 'Ey'
+    table['F3'] = 'No'
+    table['G3'] = 'x, см'
+    table['H3'] = 'Средн знач'
+    table['I3'] = 'Станд откл'
+
+    docs_folder_path = test.excel_folder_path / '30MHz'
+    docs_list = os.listdir(docs_folder_path)
+    k_x, k_y = 0, 0
+    for doc in docs_list:
+        num_in_fname = doc[7:10]
+        doc_path = test.excel_folder_path / '30MHz' / doc
+        wb = excel.load_workbook(doc_path)
+        sheet = wb['Integral']
+        coordinate = int(sheet.cell(row=1, column=2).value[3:6]) - 133
+        min_row = filt_row + 3
+        max_row = sheet.max_row
+        max_col = sheet.max_column
+        first_nums_row, last_nums_row = sheet.cell(row=filt_row + 3, column=1).value, sheet.cell(max_row, column=1).value
+        first_num, last_num = first_nums_row.split('/')[0], last_nums_row.split('/')[-1]
+        vals_list = []
+        for i in range(min_row, max_row + 1):
+            for j in range(3, max_col - 1):
+                vals_list.append(sheet.cell(row=i, column=j).value)
+        aver_val = np.mean(np.asarray(vals_list))
+        dev = tstd(np.asarray(vals_list))
+        print('vals_in_cells:', vals_list)
+        if num_in_fname in e_x_nums:
+            #'No'
+            cell = table.cell(row=k_x + 4, column=1)
+            cell.value = f'{first_num} - {last_num}'
+            #'x, см'
+            cell = table.cell(row=k_x + 4, column=2)
+            cell.value = coordinate
+            #'Средн знач'
+            cell = table.cell(row=k_x + 4, column=3)
+            cell.value = np.round(aver_val, 3)
+            #'Станд откл'
+            cell = table.cell(row=k_x + 4, column=4)
+            cell.value = np.round(dev, 3)
+            k_x = k_x + 1
+        if num_in_fname in e_y_nums:
+            #'No'
+            cell = table.cell(row=k_y + 4, column=6)
+            cell.value = f'{first_num} - {last_num}'
+            #'x, см'
+            cell = table.cell(row=k_y + 4, column=7)
+            cell.value = coordinate
+            #'Средн знач'
+            cell = table.cell(row=k_y + 4, column=8)
+            cell.value = np.round(aver_val, 3)
+            #'Станд откл'
+            cell = table.cell(row=k_y + 4, column=9)
+            cell.value = np.round(dev, 3)
+            k_y = k_y + 1
+    plot_table_path = test.excel_folder_path / f'{exp_num}_Ex_Ey_plot_210728.xlsx'
+    plot_table.save(plot_table_path)
+
+
+#average_coordinate_plot()
+
+
+def e_abs_int(t, u):
+    d_time = np.abs(t[1] - t[0])
+    u_abs = np.abs(u)
+    e_abs_integral = np.trapz(u_abs, x=t, dx=d_time)
+    return e_abs_integral
+
+def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=450, time_step=25):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    print(nums_mtrx)
+    central_freq = 2.714E9
+    pts = np.arange(start_time, end_time + time_step, time_step)
+    compare_pts = [pts[i] * 1E-9 for i in range(len(pts))]
+    col_nums = [i for i in range(3, 3 + len(compare_pts))]
+    comment = test.read_excel(f'str{nums_mtrx[0, 0]}.csv')['dicts'][f'{nums_mtrx[0, 0]}']['Комментарий']
+
+    ex_table = excel.Workbook()
+    ex_table.create_sheet(title='Integral', index=0)
+    sheet = ex_table['Integral']
+    sheet['A1'] = exp_num
+    sheet['B1'] = comment
+    sheet['A2'] = 'Без фильтра'
+    sheet['A3'] = 'No (центр/бок)'
+    sheet['B3'] = 'n, отн.ед.'
+    filt_row = 5 + nums_mtrx.shape[0]
+    sheet[f'A{filt_row}'] = 'Фильтрованный'
+    sheet[f'A{filt_row + 1}'] = 'No (центр/бок)'
+    sheet[f'B{filt_row + 1}'] = 'n, отн.ед.'
+    mean_val_letter = get_column_letter(len(pts) + 3)
+    std_dev_letter = get_column_letter(len(pts) + 4)
+    sheet[f'{mean_val_letter}{filt_row + 1}'] = 'Средн знач'
+    sheet[f'{std_dev_letter}{filt_row + 1}'] = 'Станд откл'
+
+    for n in range(len(col_nums)):
+        letter = get_column_letter(col_nums[n])
+        sheet[f'{letter}3'] = f't_{n + 1} = {np.round(compare_pts[n] / 1e-9, 0)}'
+        sheet[f'{letter}{filt_row + 1}'] = f't_{n + 1} = {np.round(compare_pts[n] / 1e-9, 0)} c'
+    u_1_vals_list = []
+    u_3_vals_list = []
+    for k, pt in enumerate(compare_pts):
+        row_ind = 0
+        for j in range(nums_mtrx.shape[0]):
+            antennas_data_dict = {}
+            for i in range(nums_mtrx.shape[1]):
+                print(nums_mtrx[j, i], 'pt=', pt)
+                file_num = f'{nums_mtrx[j, i]}'
+                file_name = f'str{file_num}.csv'
+                data = test.open_file(file_name, reduced=False)
+                filt_freq_min, filt_freq_max = central_freq - 30e6, central_freq + 30e6
+                if int(nums_mtrx[j, i]) % 2 == 0:
+                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+                    comment = test.read_excel(file_name)['dicts'][file_num]['Комментарий']
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_u_3 = volt_max - volt_min
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_u_3_filt = volt_max_filt - volt_min_filt
+
+                    u_3_vals_list.append(delta_u_3_filt)
+
+                    cell = sheet.cell(row=j + 4, column=2)
+                    cell.value = f'{pl_density}'
+
+                    cell = sheet.cell(row=j + 2 + filt_row, column=2)
+                    cell.value = f'{pl_density}'
+                else:
+                    t_shift = 0
+                    t, u = data['time'] + t_shift, (data['voltage'] - np.mean(data['voltage']))
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_u_1 = volt_max - volt_min
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_u_1_filt = volt_max_filt - volt_min_filt
+
+                    u_1_vals_list.append(delta_u_1_filt)
+
+            cell = sheet.cell(row=j + 4, column=1)
+            cell.value = f'{int(nums_mtrx[j, i]) - 1} / {nums_mtrx[j, i]}'
+
+            cell = sheet.cell(row=j + 2 + filt_row, column=1)
+            cell.value = f'{int(nums_mtrx[j, i]) - 1} / {nums_mtrx[j, i]}'
+
+            if int(file_num) < 156:
+                u_relat_filt = delta_u_1_filt / delta_u_3_filt
+                u_relat = delta_u_1 / delta_u_3
+            else:
+                u_relat_filt = delta_u_3_filt / delta_u_1_filt
+                u_relat = delta_u_3 / delta_u_1
+
+            column = col_nums[k]
+
+            cell = sheet.cell(row=j + 4, column=column)
+            cell.value = np.round(u_relat, 3)
+            cell = sheet.cell(row=j + 2 + filt_row, column=column)
+            cell.value = np.round(u_relat_filt, 3)
+        path = test.excel_folder_path / f'{exp_num}_{nums_mtrx[j, i]}_{comment[:6]}_30MHz_full.xlsx'
+    '''
+    for j in range(nums_mtrx.shape[0]):
+        vals_list = []
+        for i in range(len(pts)):
+            num_row = j + 2 + filt_row
+            num_column = i + 3
+            vals_list.append(float(sheet.cell(row=num_row, column=num_column).value))
+        print(vals_list)
+        mean_val = np.mean(np.asarray(vals_list))
+        tstd_val = tstd(np.asarray(vals_list))
+        cell = sheet.cell(row=j + 2 + filt_row, column=len(compare_pts) + 3)
+        cell.value = np.round(mean_val, 3)
+        cell = sheet.cell(row=j + 2 + filt_row, column=len(compare_pts) + 4)
+        cell.value = np.round(tstd_val, 3)
+    '''
+    ex_table.save(path)
+
+exception_list = [139, 140, 155]
+#exception_list = []
+#two_antennas_integral_table(210707, [f'{i:03d}' for i in range(55, 188) if i not in exception_list])
+
+file_nums = [f'{i:03d}' for i in range(153, 158) if i not in exception_list]
+
+
+def two_antennas_integral_table(exp_num, file_nums):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    polar_dict = polarization_classification()
+    nums_list = [f'{i:03d}' for i in range(55, 189) if i not in exception_list]
+    e_y_nums, e_x_nums = polar_dict['Ex'], polar_dict['Ey']
+    central_freq = 2.714E9
+
+    ex_table = excel.Workbook()
+    ex_table.create_sheet(title='Integral', index=0)
+    sheet = ex_table['Integral']
+    sheet['A1'] = exp_num
+    sheet['B1'] = 'E_y'
+    sheet['A2'] = 'No (центр/опорн)'
+    sheet['B2'] = 'n, отн.ед.'
+    sheet['C2'] = 'Координата центра'
+    sheet['D2'] = 'W'
+    sheet['E2'] = 'W_опорн'
+
+    sheet['G1'] = 'E_x'
+    sheet['G2'] = 'No (центр/опорн)'
+    sheet['H2'] = 'n, отн.ед.'
+    sheet['I2'] = 'Координата центра'
+    sheet['J2'] = 'W'
+    sheet['K2'] = 'W_опорн'
+
+
+    for j in range(nums_mtrx.shape[0]):
+        for i in range(nums_mtrx.shape[1]):
+            file_num = f'{nums_mtrx[j, i]}'
+            file_name = f'str{file_num}.csv'
+            data = test.open_file(file_name, reduced=True, red_type=325)
+            filt_freq_min, filt_freq_max = central_freq - 30e6, central_freq + 30e6
+
+            t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+            u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+            pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+            comment = test.read_excel(file_name)['dicts'][file_num]['Комментарий']
+            full_int = np.round(e_abs_int(t, u_filt) / 1e-8, 3)
+            if 'y' in comment:
+                cell = sheet.cell(row=j + 3, column=1)
+                cell.value = f'{nums_mtrx[j, i]}'
+                cell = sheet.cell(row=j + 3, column=2)
+                cell.value = f'{pl_density}'
+                cell = sheet.cell(row=j + 3, column=3)
+                cell.value = int(comment[3:6]) - 133
+                if int(nums_mtrx[j, i]) < 156:
+                    if int(nums_mtrx[j, i]) % 2 == 0:
+                        cell = sheet.cell(row=j + 3, column=5)
+                        cell.value = f'{full_int}'
+                    else:
+                        cell = sheet.cell(row=j + 3, column=4)
+                        cell.value = f'{full_int}'
+                else:
+                    if int(nums_mtrx[j, i]) % 2 == 0:
+                        cell = sheet.cell(row=j + 3, column=4)
+                        cell.value = f'{full_int}'
+                    else:
+                        cell = sheet.cell(row=j + 3, column=5)
+                        cell.value = f'{full_int}'
+                row_y = row_y + 1
+            if 'x' in comment:
+                cell = sheet.cell(row=j + 3, column=7)
+                cell.value = f'{nums_mtrx[j, i]}'
+                cell = sheet.cell(row=j + 3, column=8)
+                cell.value = f'{pl_density}'
+                cell = sheet.cell(row=j + 3, column=9)
+                cell.value = int(comment[3:6]) - 133
+                if int(nums_mtrx[j, i]) < 156:
+                    if int(nums_mtrx[j, i]) % 2 == 0:
+                        cell = sheet.cell(row=j + 3, column=11)
+                        cell.value = f'{full_int}'
+                    else:
+                        cell = sheet.cell(row=j + 3, column=10)
+                        cell.value = f'{full_int}'
+                else:
+                    if int(nums_mtrx[j, i]) % 2 == 0:
+                        cell = sheet.cell(row=j + 3, column=10)
+                        cell.value = f'{full_int}'
+                    else:
+                        cell = sheet.cell(row=j + 3, column=11)
+                        cell.value = f'{full_int}'
+                row_x = row_x + 1
+    path = test.excel_folder_path / f'E_x_E_y_ integrals_210707(2).xlsx'
+    ex_table.save(path)
+
+
+exception_list = [139, 140, 155]
+#exception_list = []
+#two_antennas_integral_table(210707, [f'{i:03d}' for i in range(55, 188) if i not in exception_list])
+
+file_nums = [f'{i:03d}' for i in range(153, 158) if i not in exception_list]
+
+
+def two_antennas_ampl_relate(exp_num, file_nums, pts):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    print(nums_mtrx)
+    central_freq = 2.714E9
+    compare_pts = [pts[i] * 1E-9for i in range(len(pts))]
+    for pt in compare_pts:
+        for j in range(nums_mtrx.shape[0]):
+            for i in range(nums_mtrx.shape[1]):
+                print(nums_mtrx[j, i], 'pt=', np.round(pt/1e-9, 1))
+                file_num = f'{nums_mtrx[j, i]}'
+                file_name = f'str{file_num}.csv'
+                data = test.open_file(file_name, reduced=False)
+                filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
+                if int(nums_mtrx[j, i]) % 2 == 0:
+                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                    #plt.plot(t, u)
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    plt.plot(t, u_filt)
+                    #pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_main = volt_max - volt_min
+                    print('volt_max =', volt_max, 'time_max', time_max)
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_main_filt = volt_max_filt - volt_min_filt
+
+                    #plt.plot(t, u)
+                    #plt.plot(time_min, volt_min,  marker='o')
+                    #plt.plot(time_max, volt_max,  marker='o')
+                else:
+                    #t, u = data['time'] + 4.347E-9, (data['voltage'] - np.mean(data['voltage']))
+                    t, u = data['time'] + 32E-12, (data['voltage'] - np.mean(data['voltage']))
+                    #plt.plot(t, u)
+                    u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
+                    plt.plot(t, u_filt)
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    delta_sub = volt_max - volt_min
+                    print('volt_max =', volt_max, 'time_max', time_max)
+
+                    u_filt = u_filt[ind_mask]
+                    filt_dict = find_zeros(t, u_filt)
+                    time_max_filt, volt_max_filt = filt_dict['time_max'], filt_dict['volt_max']
+                    time_min_filt, volt_min_filt = filt_dict['time_min'], filt_dict['volt_min']
+                    delta_sub_filt = volt_max_filt - volt_min_filt
+
+                    #plt.plot(t, u_filt)
+                    #plt.plot(time_min_filt, volt_min_filt, marker='o')
+                    #plt.plot(time_max_filt, volt_max_filt, marker='o')
+            plt.show()
+            plt.close()
+            u_relat_filt = delta_sub_filt / delta_main_filt
+            u_relat = delta_sub / delta_main
+            print('Отн_без_фильтра:', np.round(u_relat, 3))
+            print('Oтн_фильтр:', np.round(u_relat_filt, 3))
+
+
+#two_antennas_ampl_relate(210622, ['001', '002'], [100, 200, 300, 400])
+
+
+def two_antennas_time_max_dif(exp_num, file_nums, pts):
+    print(f'Experiment {exp_num}')
+    test = ProcessSignal(str(exp_num))
+    nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
+    print(nums_mtrx)
+    central_freq = 2.714E9
+    compare_pts = [pts[i] * 1E-9for i in range(len(pts))]
+    for pt in compare_pts:
+        for j in range(nums_mtrx.shape[0]):
+            for i in range(nums_mtrx.shape[1]):
+                print(nums_mtrx[j, i], 'pt=', np.round(pt/1e-9, 1))
+                file_num = f'{nums_mtrx[j, i]}'
+                file_name = f'str{file_num}.csv'
+                data = test.open_file(file_name, reduced=False)
+                filt_freq_min, filt_freq_max = central_freq - 15e6, central_freq + 15e6
+                if int(nums_mtrx[j, i]) % 2 == 0:
+                    t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
+                    #plt.plot(t, u)
+                    #plt.show()
+                    #plt.close()
+                    #pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    time_max_ch_1 = time_max
+                    print('volt_max =', volt_max, 'time_max', np.round(time_max / 1e-9, 3))
+
+                    plt.plot(t, u)
+                    plt.plot(time_max, volt_max,  marker='o')
+                else:
+                    t, u = data['time'], (data['voltage'] - np.mean(data['voltage']))
+                    #plt.plot(t, u)
+                    #plt.show()
+                    #plt.close()
+                    ind_mask = np.logical_and(t >= pt, t <= pt + 1E-9)
+                    t, u = t[ind_mask], u[ind_mask]
+                    peak_dict = find_zeros(t, u)
+                    time_max, volt_max, time_min, volt_min = peak_dict['time_max'], peak_dict['volt_max'], peak_dict['time_min'], peak_dict['volt_min']
+                    time_max_ch_2 = time_max
+                    print('volt_max =', volt_max, 'time_max', np.round(time_max / 1e-9, 3))
+
+                    plt.plot(t, u)
+                    plt.plot(time_max, volt_max, marker='o')
+
+                    #plt.plot(t, u_filt)
+                    #plt.plot(time_min_filt, volt_min_filt, marker='o')
+                    #plt.plot(time_max_filt, volt_max_filt, marker='o')
+            plt.show()
+            u_dif = time_max_ch_2 - time_max_ch_1
+            print('raw_u_dif', u_dif / 1e-12)
+            print('time_dif =', np.round(u_dif / 1e-12))
+
+#file_list = [f'{i:03d}' for i in range(31, 33)]
+#two_antennas_time_max_dif(210530, file_list, [700, 700.4])
+
+
+def read_excel_average_vals(exp_num, exclusios_list):
+    excel_folder_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\{}\Excel'.format(exp_num))
+    excel_path = excel_folder_path / f'Ampl_{exp_num}_2_antennas.xlsx'
+    wb = excel.load_workbook(excel_path)
+    sheet = wb['Integral']
+
+    max_row = sheet.max_row
+    max_col = sheet.max_column
+
+    for c in range(1, max_col + 1):
+        cell_name = str(sheet.cell(row=1, column=c).value)
+        if 'Средн' in cell_name:
+            av_column = get_column_letter(c)
+        elif 'откл' in cell_name:
+            dev_column = get_column_letter(c)
+    n_vals = np.asarray([float(sheet[f'B{i}'].value) for i in range(3, max_row) if i not in exclusios_list])
+    average_vals = np.asarray([float(sheet[f'{av_column}{i}'].value) for i in range(3, max_row) if i not in exclusios_list])
+    stand_dev_vals = np.asarray([float(sheet[f'{dev_column}{i}'].value) for i in range(3, max_row) if i not in exclusios_list])
+    sorted_inds = np.argsort(n_vals)
+
+    n_vals = n_vals[sorted_inds]
+    average_vals = average_vals[sorted_inds]
+    stand_dev_vals = stand_dev_vals[sorted_inds]
+
+    new_table = excel.Workbook()
+    new_table.create_sheet(title='Average_vals', index=0)
+    sheet = new_table['Average_vals']
+    sheet['A1'] = 'n, отн.ед.'
+    sheet['B1'] = 'Среднее'
+    sheet['C1'] = 'Станд откл'
+
+    for z in range(len(n_vals)):
+        cell = sheet.cell(row=z + 2, column=1)
+        cell.value = n_vals[z]
+        cell = sheet.cell(row=z + 2, column=2)
+        cell.value = average_vals[z]
+        cell = sheet.cell(row=z + 2, column=3)
+        cell.value = stand_dev_vals[z]
+
+    new_table_path = Path(r'C:\Users\d_Nice\Documents\SignalProcessing\2021\{}\Excel\average_vals_210622(1).xlsx'.format(exp_num))
+    new_table.save(new_table_path)
+
+#read_excel_average_vals(210607, [])
+
 
 def file_nums_oscillogramms_10_ns(exp_num, file_nums, start_time, density_vals=False, filt=False):
     print(file_nums)
@@ -582,7 +1271,6 @@ def rename_osc_files(exp_num):
         old_file_path = proc.signal_pics_path / file
         new_file_path = proc.signal_pics_path / new_file_name
         os.rename(old_file_path, new_file_path)
-
 
 #rename_osc_files(210414)
 

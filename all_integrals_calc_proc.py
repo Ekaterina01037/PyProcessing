@@ -18,7 +18,7 @@ def magnetron_integrals_bloc(exp_num, file_nums, central_freq=2.714, band_half_w
         f_low = (central_freq - band_half_width) * 1e9
         f_high = (central_freq + band_half_width) * 1e9
         dt_2 = (t[-1] - t[0]) ** 2
-
+        #pl_num = f'{(int(num) - 1):03d}'
         pl_density = proc.read_excel(file_name)['dicts'][num]['Ток плазмы, А']
 
         freqs, amps = proc.fft_amplitude(t, u)['frequency'], proc.fft_amplitude(t, u)['amplitude']
@@ -148,7 +148,7 @@ def energy_4_experiments():
     plt.close(fig)
     plt.show()
 
-energy_4_experiments()
+#energy_4_experiments()
 
 
 def multi_integral_excel(exp_num):
@@ -158,20 +158,26 @@ def multi_integral_excel(exp_num):
     csv_signal_nums = csv_types['signal_nums']
     excel_dicts = proc.read_excel(csv_signal_nums)['numbers']
     magnetron_nums = excel_dicts['magnetron']
-    list_1 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if int(excel_dicts['magnetron'][i]) < 61]
-    list_2 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if 60 < int(excel_dicts['magnetron'][i]) < 109]
-    list_3 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if
-              108 < int(excel_dicts['magnetron'][i]) < 123]
-    list_4 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if
-              122 < int(excel_dicts['magnetron'][i]) < 131]
-    list_5 = [excel_dicts['magnetron'][i] for i in range(len(excel_dicts['magnetron'])) if
-              130 < int(excel_dicts['magnetron'][i]) < 175]
-    lists = [list_1, list_2, list_3, list_4, list_5]
+    magnetron_nums = [csv_signal_nums[i] for i in range(len(csv_signal_nums))if int(csv_signal_nums[i]) % 2 == 0]
+    print(magnetron_nums)
+    list_1 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if 6 < int(magnetron_nums[i]) < 31 ]
+    list_2 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if 30 < int(magnetron_nums[i]) < 49]
+    list_3 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if
+              48 < int(magnetron_nums[i]) < 67]
+    list_4 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if
+              66 < int(magnetron_nums[i]) < 89]
+    list_5 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if
+              88 < int(magnetron_nums[i]) < 107]
+    list_6 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if
+              106 < int(magnetron_nums[i]) < 123]
+    list_7 = [magnetron_nums[i] for i in range(len(magnetron_nums)) if
+              122 < int(magnetron_nums[i]) < 136]
+    lists = [list_1, list_2, list_3, list_4, list_5, list_6, list_7]
     dict_list = [magnetron_integrals_bloc(exp_num, lists[i]) for i in range(len(lists))]
     fill_excel_table(exp_num, dict_list, proc)
 
 
-#multi_integral_excel(210412)
+#multi_integral_excel(210609)
 
 
 def magnetron_exp(exp_num):
@@ -185,8 +191,7 @@ def magnetron_exp(exp_num):
     dict_list = [magnetron_integrals_bloc(exp_num, lists[i]) for i in range(len(lists))]
     fill_excel_table(exp_num, dict_list, proc)
 
-
-#magnetron_exp(210421)
+#magnetron_exp(210708)
 
 
 def all_integrals_proc(exp_num, nums, table=True, central_freq=2.714, band_half_width=0.05):

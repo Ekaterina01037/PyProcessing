@@ -131,10 +131,10 @@ class ProcessSignal:
                 for i in range(0, len(red_t)):
                     writer.writerow([0, 0, 0, red_t[i], red_u[i]])
 
-    def reduce_fft(self, time_0=100e-9, time_interval=262e-9, prelim_view=False):
+    def reduce_fft(self, time_0=100e-9, time_interval=325e-9, prelim_view=False):
         csv_types = self.read_type_file()
         csv_signals = csv_types['signal_files']
-        csv_signals = ['str206.csv']
+        #csv_signals = ['str206.csv']
         csv_gin_files = csv_types['voltage_files']
         time_1 = time_0 + time_interval + 100e-9
         for j, csv_signal in enumerate(csv_signals):

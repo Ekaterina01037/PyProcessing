@@ -22,7 +22,7 @@ def rename_csv_files(exp_num, old_part, new_part):
 def write_file(exp_num):
     fft_test = ProcessSignal(f'{exp_num}')
     fft_test.files_classification()
-#write_file(210423)
+#write_file(210707)
 
 
 def load_text():
@@ -35,8 +35,8 @@ def load_text():
 
 def write_csv(exp_num):
     test = ProcessSignal(f'{exp_num}')
-    test.reduce_fft(time_0=90e-9, prelim_view=False)
-write_csv(210423)
+    test.reduce_fft(time_0=100e-9, prelim_view=False)
+#write_csv(210707)
 
 
 def load_red_csv():
@@ -110,7 +110,7 @@ def series_fft(exp_num):
     excel_results = fft_test.read_excel(csv_signal_nums)['numbers']
     noise_nums = excel_results['noise']
     magnetron_nums = excel_results['magnetron']
-    magnetron_nums = [f'{i:03d}' for i in range(132, 187, 2)]
+    #magnetron_nums = [f'{i:03d}' for i in range(132, 187, 2)]
     print('Magnetron nums are', magnetron_nums)
     print('Noise nums are:', noise_nums)
     fft_test.part_fft(csv_signals,
@@ -119,7 +119,7 @@ def series_fft(exp_num):
                       fft_type='full', block_full=False,
                       block_part=False, peak=False, noise=False)
 
-#series_fft(210304)
+#series_fft(210708)
 
 
 
