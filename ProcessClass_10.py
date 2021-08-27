@@ -8,6 +8,7 @@ from scipy.signal import iirfilter, sosfilt, zpk2sos
 from scipy.stats import linregress
 #from obspy.signal.filter import bandstop
 import openpyxl as xl
+from openpyxl.utils import get_column_letter
 default_work_folder_path = r"C:\Users\d_Nice\Documents\SignalProcessing\2021"
 
 class ProcessSignal:
@@ -131,12 +132,12 @@ class ProcessSignal:
                 for i in range(0, len(red_t)):
                     writer.writerow([0, 0, 0, red_t[i], red_u[i]])
 
-    def reduce_fft(self, time_0=100e-9, time_interval=325e-9, prelim_view=False):
+    def reduce_fft(self, time_0=100e-9, time_interval=262e-9, prelim_view=False):
         csv_types = self.read_type_file()
         csv_signals = csv_types['signal_files']
-        #csv_signals = ['str206.csv']
+        csv_signals = ['str067.csv', 'str069.csv']
         csv_gin_files = csv_types['voltage_files']
-        time_1 = time_0 + time_interval + 100e-9
+        time_1 = time_0 + time_interval + 25e-9
         for j, csv_signal in enumerate(csv_signals):
             file = self.open_file(csv_signal)
             raw_time, raw_voltage = file['time'], file['voltage']
@@ -230,30 +231,63 @@ class ProcessSignal:
     def read_excel(self, csv_signal_nums):
         wb = xl.load_workbook(self.main_excel_path)
         sheet = wb['Лист1']
-        rows = sheet.max_row
-        cols = sheet.max_column
+        row_max = sheet.max_row
         row_min = 1
-        col_max = 1
-        for i in range(1, rows):
+        for i in range(1, row_max):
             cell = sheet.cell(row=i, column=1)
             cell_row_val = cell.value
             if cell_row_val == 'Номер файла' and row_min == 1:
                 row_min = i
 
-        for m in range(1, cols+1):
-            cell = sheet.cell(row=row_min, column=m)
-            cell_col_val = cell.value
-            if cell_col_val == 'Комментарий':
-                col_max = m
+        first_col_row_nums = []
+        for i_row in range(row_min, row_max + 1):
+            first_col_cell_val = sheet.cell(row=i_row, column=1).value
+            if isinstance(first_col_cell_val, int):
+                first_col_row_nums.append(i_row)
 
+        m = 1
+        cell = sheet.cell(row=row_min, column=m)
+        col_name = cell.value
         keys = []
-        for k in range(1, col_max + 1):
-            cell = sheet.cell(row=row_min, column=k)
-            cell_key = cell.value
-            keys.append(cell_key)
+        cols_dict = {}
+        while type(col_name) is str:
+            col_vals = []
+            keys.append(col_name)
+            print(get_column_letter(m), sheet.cell(row=row_min, column=m).value)
+            for i_row in range(row_min, row_max):
+                if i_row in first_col_row_nums:
+                    cell_val = sheet.cell(row=i_row, column=m).value
+                    col_vals.append(cell_val)
+            cols_dict[col_name] = col_vals
+            if m == 1:
+                num_of_vals = len(col_vals)
+            next_col_name = sheet.cell(row=row_min, column=m + 1).value
+            if type(next_col_name) is str:
+                m += 1
+                col_name = sheet.cell(row=row_min, column=m).value
+            else:
+                break
+        col_max = m
+        print(get_column_letter(col_max), sheet.cell(row=row_min, column=col_max).value)
+
+        pl_currents = cols_dict['Ток плазмы, А']
+        magnetron_delays = cols_dict['Задержка магнетрона, нс']
+        file_nums = cols_dict['Номер файла']
+        mampl_nums, noise_nums, other_nums = [], [], []
+        for i in range(num_of_vals):
+            pl_c_val = pl_currents[i]
+            m_delay = magnetron_delays[i]
+            if isinstance(pl_c_val, float):
+                if isinstance(m_delay, int):
+                    mampl_nums.append(file_nums[i])
+                else:
+                    noise_nums.append(file_nums[i])
+            else:
+                other_nums.append[file_nums[i]]
+
 
         row_dicts = []
-        for l in range(row_min + 1, rows+1):
+        for l in range(row_min + 1, row_max + 1):
             row_dict = {}
             vals = []
             for m in range(1, col_max + 1):
@@ -261,9 +295,10 @@ class ProcessSignal:
                 cell_val = cell.value
                 vals.append(cell_val)
             for i, key in enumerate(keys):
-                row_dict[key] = vals[i]
+                if vals[i] is not None:
+                    row_dict[key] = vals[i]
             row_dicts.append(row_dict)
-
+        print(row_dicts)
         plasma_dicts = []
         reb_dicts = []
         magnetron_dicts = []
@@ -274,10 +309,11 @@ class ProcessSignal:
             heating = row_dict['Накал']
             magnetron_delay = row_dict['Задержка магнетрона, нс']
             #magnetron_in_voltage = row_dict['Входное напряжение магнетрона, В']
-            comment = row_dict['Комментарий']
+            #ocmment_axis = row_dict['Комментарий_ось']
+            comment_side = row_dict['Комментарий']
             if isinstance(fnum, int):
                 if isinstance(d_plasma, float) or isinstance(d_plasma, int):
-                    if comment != 'except':
+                    if comment_side != 'except':
                         if isinstance(magnetron_delay, float) or isinstance(magnetron_delay, int):
                             magnetron_dicts.append(row_dict)
                         else:
@@ -763,7 +799,7 @@ class ProcessSignal:
         for j, csv_signal in enumerate(csv_signals):
             signal_num = csv_signal[3:6]
             if signal_num in interest_nums or signal_num in part_nums:
-                use_signal = self.open_file(csv_signal, reduced=False)
+                use_signal = self.open_file(csv_signal, reduced=True)
                 use_t = use_signal['time']
                 use_u = use_signal['voltage']
                 dt = use_signal['time_resolution']
@@ -781,16 +817,33 @@ class ProcessSignal:
                             fft_results = self.fft_amplitude(use_t, use_u)
                         try:
                             pl_density = self.read_excel(interest_nums)['dicts'][signal_num]['Ток плазмы, А']
+                            if int(signal_num) % 2 != 0:
+                                #comment = self.read_excel(interest_nums)['dicts'][signal_num]['Комментарий_ось']
+                                comment = 'Ey'
+                            else:
+                                #comment = self.read_excel(interest_nums)['dicts'][signal_num]['Комментарий_сбоку']
+                                comment = 'Ey'
                         except:
                             pl_density = self.read_excel(interest_nums)['dicts'][f'{(int(signal_num) - 1):03d}']['Ток плазмы, А']
+                            #comment = self.read_excel(interest_nums)['dicts'][f'{(int(signal_num) - 1):03d}']['Комментарий']
+                            comment = 'Ey'
+                            if int(signal_num) % 2 != 0:
+                                #comment = self.read_excel(interest_nums)['dicts'][f'{(int(signal_num) - 1):03d}']['Комментарий_ось']
+                                comment = 'Ey'
+                            else:
+                                #comment = self.read_excel(interest_nums)['dicts'][f'{(int(signal_num) - 1):03d}']['Комментарий_сбоку']
+                                comment = 'Ey'
                         freq = fft_results['frequency']
                         amp = fft_results['amplitude']
 
                         if peak:
-                            peak_inds = np.logical_and(2.69e9 < freq, freq < 2.74e9)
+                            peak_inds = np.logical_and(2.6e9 <= freq, freq <= 2.8e9)
                             peak_freqs = freq[peak_inds]
                             peak_amps = amp[peak_inds]
-                            mean_freq = self.mean_frequency(peak_freqs, peak_amps)
+                            try:
+                                mean_freq = self.mean_frequency(peak_freqs, peak_amps)
+                            except:
+                                pass
                             #line, = ax.plot(peak_freqs, peak_amps, linewidth=1.2)
                             line, = ax.plot(freq, amp, linewidth=1.2)
                             peak_max = np.round(np.max(peak_amps), 2)
@@ -869,12 +922,12 @@ class ProcessSignal:
                             ax.set_title(r'$File\/Number = {},\/ (n={}) $'.format(signal_num, pl_density))
                         else:
                             #absorbers = self.read_excel(part_nums)['dicts'][signal_num]['Поглотители в тракте магнетрона']
-                            ax.set_title(r'$File\/Number = {},\/ \/ n={} $'.format(signal_num, pl_density))
+                            ax.set_title(f'File Number = {signal_num}, n={pl_density}, {comment}')
 
                 if line is not None:
                     ax.set_ylim(bottom=0)
                     if peak:
-                        ax.set_xlim(left=2.68e9, right=2.74e9)
+                        ax.set_xlim(left=2.6e9, right=2.8e9)
                     elif fft_type == 'part':
                         ax.set_xlim(left=2.5e9, right=3e9)
                     else:
@@ -882,7 +935,10 @@ class ProcessSignal:
                     ax.grid(which='both', axis='both')
                     ax.set_xlabel(r'$Frequency, GHz$')
                     ax.set_ylabel(r'$Amplitude$')
-                    ax.legend()
+                    try:
+                        ax.legend()
+                    except:
+                        pass
                     if fft_type == 'part' or fft_type == 'both':
                         if signal_num in part_nums:
                             png_name = self.fft_part_path / signal_num
@@ -899,7 +955,7 @@ class ProcessSignal:
                                     png_name = self.fft_magnetron / 'magnetron_{}'.format(signal_num)
                                     table_path = self.fft_magnetron / 'fft_magnetron_{}.xlsx'.format(signal_num)
                             if peak:
-                                png_name = self.fft_peak / 'peak_{}_1'.format(signal_num)
+                                png_name = self.fft_peak / 'peak_{}'.format(signal_num)
                                 table_path = self.fft_peak / 'peak_{}.xlsx'.format(signal_num)
                     fig.savefig(png_name)
                     plt.close(fig)
@@ -921,6 +977,7 @@ class ProcessSignal:
             file_data = self.open_file(file_name, reduced=True)
             t, u, dt = file_data['time'], file_data['voltage'], file_data['time_resolution']
             pl_density = self.read_excel(file_name)['dicts'][num]['Ток плазмы, А']
+            comment = self.read_excel(file_name)['dicts'][num]['Комментарий']
             fft_results = self.fft_amplitude(t, u)
             freqs, amps = fft_results['frequency'], fft_results['amplitude']
             mean_freq = self.mean_frequency(freqs, amps)
@@ -940,14 +997,15 @@ class ProcessSignal:
             else:
                 line, = ax.plot(freqs, amps, linewidth=0.7, color='dodgerblue')
             if fft_type == 'peak':
-                ax.set_xlim(left=peak_freq-30e6, right=peak_freq+30e6)
+                #ax.set_xlim(left=peak_freq-30e6, right=peak_freq+30e6)
+                ax.set_xlim(left=2.6e9, right=2.8e9)
             else:
                 ax.set_xlim(left=0, right=4e9)
             ax.set_ylim(bottom=0)
             ax.grid(which='both', axis='both')
             ax.set_xlabel(r'$Frequency, GHz$')
             ax.set_ylabel(r'$Amplitude$')
-            ax.set_title(r'$№={}, n={}$'.format(num, pl_density))
+            ax.set_title(r'$№={}, n={}, {}$'.format(num, pl_density, comment))
             if fft_type != 'peak':
                 line.set_label(r'$f = {} GHz$'.format(spectrum_mean_freq))
                 ax.legend()

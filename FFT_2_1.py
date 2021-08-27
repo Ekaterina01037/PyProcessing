@@ -22,7 +22,7 @@ def rename_csv_files(exp_num, old_part, new_part):
 def write_file(exp_num):
     fft_test = ProcessSignal(f'{exp_num}')
     fft_test.files_classification()
-#write_file(210707)
+#write_file(210622)
 
 
 def load_text():
@@ -36,7 +36,7 @@ def load_text():
 def write_csv(exp_num):
     test = ProcessSignal(f'{exp_num}')
     test.reduce_fft(time_0=100e-9, prelim_view=False)
-#write_csv(210707)
+#write_csv(210622)
 
 
 def load_red_csv():
@@ -109,125 +109,18 @@ def series_fft(exp_num):
     csv_signal_nums = types['signal_nums']
     excel_results = fft_test.read_excel(csv_signal_nums)['numbers']
     noise_nums = excel_results['noise']
-    magnetron_nums = excel_results['magnetron']
-    #magnetron_nums = [f'{i:03d}' for i in range(132, 187, 2)]
+    #magnetron_nums = excel_results['magnetron']
+    magnetron_nums = [f'{i:03d}' for i in range(131, 187, 1)]
     print('Magnetron nums are', magnetron_nums)
     print('Noise nums are:', noise_nums)
     fft_test.part_fft(csv_signals,
                       interest_nums=magnetron_nums,
                       part_nums=noise_nums,
                       fft_type='full', block_full=False,
-                      block_part=False, peak=False, noise=False)
+                      block_part=False, peak=True, noise=False)
 
-#series_fft(210708)
+#series_fft(210423)
 
-
-
-def noise_fft():
-    fft_test = ProcessSignal('191001')
-    types = fft_test.read_type_file()
-    csv_signals = types['signal_files']
-    csv_signal_nums = types['signal_nums']
-    excel_results = fft_test.read_excel(csv_signal_nums)['numbers']
-    noise_nums = excel_results['noise']
-    doc_path = fft_test.fft_excel_file_path
-    wb = xl.load_workbook(doc_path)
-    wb.create_sheet(title='Noise FFT', index=2)
-    sheet3 = wb['Noise FFT']
-    sheet3['A1'] = 'File Number'
-    sheet3['B1'] = 'f, GHz'
-    sheet3['C1'] = 'n, arb.units'
-    row_f = 1
-    for i, csv_signal in enumerate(csv_signals):
-        signal_num = csv_signal[3:6]
-        if signal_num in noise_nums:
-            file = fft_test.open_file(csv_signal, reduced=True)
-            use_t = file['time']
-            use_u = file['voltage']
-            dt = file['time_resolution']
-            fft_results = fft_test.fft_amplitude(use_t, use_u, dt)
-            freq = fft_results['frequency']
-            amp = fft_results['amplitude']
-            mean_freq = fft_test.mean_frequency(freq, amp)
-            spectrum_mean_freq = mean_freq['mean_freq']
-            row_f = row_f + 1
-            cell_name = 'A{}'.format(row_f)
-            sheet3[str(cell_name)] = '{}'.format(signal_num)
-            value = spectrum_mean_freq
-            cell = sheet3.cell(row=row_f, column=2)
-            cell.value = value
-            pl_density = fft_test.read_excel(noise_nums)['dicts'][signal_num]['Ток плазмы, А']
-            value_pl = pl_density
-            cell = sheet3.cell(row=row_f, column=3)
-            cell.value = value_pl
-    new_path = fft_test.excel_folder_path / 'noise_fft.xlsx'
-    wb.save(new_path)
-#noise_fft()
-
-def noise_signal_plot(exp_name, type='e_time', left_right=False):
-    fft_test = ProcessSignal('{}'.format(exp_name))
-    csv_types = fft_test.read_type_file()
-    csv_signals = csv_types['signal_files']
-    csv_signal_nums = csv_types['signal_nums']
-    excel_dicts = fft_test.read_excel(csv_signal_nums)['numbers']
-    plasma_nums = excel_dicts['noise']
-    print('Plasma nums are:', plasma_nums)
-    e_pl_integs = np.zeros(len(plasma_nums))
-    pl_ds = np.zeros(len(plasma_nums))
-    pl_nums = np.zeros(len(plasma_nums))
-    if left_right:
-        power_koefs = np.zeros(len(plasma_nums))
-        r_amp_ints = np.zeros(len(plasma_nums))
-        l_amp_ints = np.zeros(len(plasma_nums))
-    for k, p_num in enumerate(plasma_nums):
-        for csv_signal in csv_signals:
-            csv_num = csv_signal[3:6]
-            if csv_num == p_num:
-                pl_nums[k] = int(p_num)
-                file = fft_test.open_file(csv_signal, reduced=True)
-                plasma_time = file['time']
-                plasma_voltage = file['voltage']
-                dt = file['time_resolution']
-                n_dt = plasma_time[-1] - plasma_time[0]
-
-                if type == 'e_time':
-                    e_pl_integ = fft_test.e_square(plasma_time, plasma_voltage)
-                if type == 'amp_freq':
-                    pl_fft = fft_test.fft_amplitude(plasma_time, plasma_voltage, dt)
-                    pl_fr = pl_fft['frequency']
-                    pl_amp = pl_fft['amplitude']
-                    e_pl_integ = 2 * (n_dt**2) * fft_test.e_square(pl_fr, pl_amp)
-                    if left_right:
-                        left_inds = pl_fr < 2.725e9
-                        l_freqs = pl_fr[left_inds]
-                        l_amps = pl_amp[left_inds]
-                        l_amp_integ = 2 * (n_dt**2) * fft_test.e_square(l_freqs, l_amps)
-
-                        right_inds = pl_fr > 2.755e9
-                        r_freqs = pl_fr[right_inds]
-                        r_amps = pl_amp[right_inds]
-                        r_amp_integ = 2 * (n_dt**2) * fft_test.e_square(r_freqs, r_amps)
-
-                        r_amp_ints[k] = r_amp_integ
-                        l_amp_ints[k] = l_amp_integ
-                        power_koefs[k] = r_amp_integ / l_amp_integ
-                #e_pl_integ = fft_test.e_square(red_time, red_volt)
-                e_pl_integs[k] = e_pl_integ
-                pl_ds[k] = fft_test.read_excel(csv_signal_nums)['dicts'][p_num]['Ток плазмы, А']
-    pl_ind_sort = np.argsort(pl_ds)
-    e_pl_integs = e_pl_integs[pl_ind_sort]
-    pl_ds = pl_ds[pl_ind_sort]
-    power_koefs = power_koefs[pl_ind_sort]
-    r_amp_ints = r_amp_ints[pl_ind_sort]
-    l_amp_ints = l_amp_ints[pl_ind_sort]
-    plasma_nums = pl_nums[pl_ind_sort]
-    pl_plot_dict = {'e_integs': e_pl_integs,
-                    'pl_ds': pl_ds,
-                    'koefs': power_koefs,
-                    'r_power': r_amp_ints,
-                    'l_power': l_amp_ints,
-                    'plasma_nums': plasma_nums}
-    return pl_plot_dict
 
 def left_right_noise():
     test = ProcessSignal('191106')
