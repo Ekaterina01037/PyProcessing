@@ -228,6 +228,21 @@ class ProcessSignal:
             csv_types[key_name] = vals
         return csv_types
 
+    def fnums_delim(self, fnum):
+        if fnum < 100:
+            num_1 = fnum // 10
+            num_2 = fnum % 10
+        elif fnum > 10000:
+            num_1 = fnum // 1000
+            num_2 = fnum % 1000
+        else:
+            num_1 = fnum // 100
+            num_2 = fnum % 100
+        fnum_1 = '{:03d}'.format(num_1)
+        fnum_2 = '{:03d}'.format(num_2)
+        return fnum_1, fnum_2
+
+
     def read_excel(self, csv_signal_nums):
         wb = xl.load_workbook(self.main_excel_path)
         sheet = wb['Лист1']
@@ -240,16 +255,21 @@ class ProcessSignal:
                 row_min = i
 
         first_col_row_nums = []
+        cols_dict = {}
+        fnums_1, fnums_2 = [], []
         for i_row in range(row_min, row_max + 1):
             first_col_cell_val = sheet.cell(row=i_row, column=1).value
             if isinstance(first_col_cell_val, int):
                 first_col_row_nums.append(i_row)
+                fnum_1, fnum_2 = self.fnums_delim(first_col_cell_val)
+                fnums_1.append(fnum_1)
+                fnums_2.append(fnum_2)
+        cols_dict['Ch_1'], cols_dict['Ch_3'] = fnums_1, fnums_2
 
-        m = 1
+        m = 2
         cell = sheet.cell(row=row_min, column=m)
         col_name = cell.value
         keys = []
-        cols_dict = {}
         while type(col_name) is str:
             col_vals = []
             keys.append(col_name)
@@ -259,7 +279,7 @@ class ProcessSignal:
                     cell_val = sheet.cell(row=i_row, column=m).value
                     col_vals.append(cell_val)
             cols_dict[col_name] = col_vals
-            if m == 1:
+            if m == 2:
                 num_of_vals = len(col_vals)
             next_col_name = sheet.cell(row=row_min, column=m + 1).value
             if type(next_col_name) is str:
@@ -272,7 +292,7 @@ class ProcessSignal:
 
         pl_currents = cols_dict['Ток плазмы, А']
         magnetron_delays = cols_dict['Задержка магнетрона, нс']
-        file_nums = cols_dict['Номер файла']
+        fnums_1, fnum_2 = cols_dict['Ch_1'], cols_dict['Ch_3']
         mampl_nums, noise_nums, other_nums = [], [], []
         for i in range(num_of_vals):
             pl_c_val = pl_currents[i]
