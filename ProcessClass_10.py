@@ -264,7 +264,7 @@ class ProcessSignal:
                 fnum_1, fnum_2 = self.fnums_delim(first_col_cell_val)
                 fnums_1.append(fnum_1)
                 fnums_2.append(fnum_2)
-        cols_dict['Ch_1'], cols_dict['Ch_3'] = fnums_1, fnums_2
+        cols_dict['Номер файла'] = [fnums_1, fnums_2]
 
         m = 2
         cell = sheet.cell(row=row_min, column=m)
@@ -292,7 +292,7 @@ class ProcessSignal:
 
         pl_currents = cols_dict['Ток плазмы, А']
         magnetron_delays = cols_dict['Задержка магнетрона, нс']
-        fnums_1, fnum_2 = cols_dict['Ch_1'], cols_dict['Ch_3']
+        file_nums = cols_dict['Номер файла']
         mampl_nums, noise_nums, other_nums = [], [], []
         for i in range(num_of_vals):
             pl_c_val = pl_currents[i]
