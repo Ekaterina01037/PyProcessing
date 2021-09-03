@@ -524,7 +524,8 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
     compare_pts = [pts[i] * 1E-9 for i in range(len(pts))]
     col_nums = [i for i in range(3, 3 + len(compare_pts))]
     print('Start reading excel for comments')
-    comment = test.read_excel(f'str{nums_mtrx[0, 0]}.csv')['dicts'][f'{nums_mtrx[0, 0]}']['Комментарий']
+    excel_inf = test.read_excel()['row_dicts']
+    comment = excel_inf[f'{nums_mtrx[0, 0]}']['Комментарий']
 
     ex_table = excel.Workbook()
     ex_table.create_sheet(title='Integral', index=0)
@@ -562,8 +563,8 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
                 if int(nums_mtrx[j, i]) % 2 == 0:
                     t, u = data['time'], data['voltage'] - np.mean(data['voltage'])
                     u_filt = test.fft_filter(t, u, filt_freq_min, filt_freq_max)
-                    pl_density = test.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
-                    comment = test.read_excel(file_name)['dicts'][file_num]['Комментарий']
+                    pl_density = excel_inf[file_num]['Ток плазмы, А']
+                    comment = excel_inf[file_num]['Комментарий']
                     ind_mask = np.logical_and(t >= pt, t <= pt + 1.3E-9)
                     t, u = t[ind_mask], u[ind_mask]
                     try:
@@ -645,10 +646,9 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
                 cell.value = np.round(u_relat_filt, 3)
             else:
                 cell.value = ' '
-        path = test.excel_folder_path / f'{exp_num}_{nums_mtrx[j, i]}_{comment[:2]}_{comment[4:7]}.xlsx'
-
+        #path = test.excel_folder_path / f'{exp_num}_{nums_mtrx[j, i]}_{comment[:2]}_{comment[4:7]}.xlsx'
+        path = test.excel_folder_path /'max_table.xlsx'
     for j in range(nums_mtrx.shape[0]):
-        print(vals_list)
         vals_list = []
         for i in range(len(pts)):
             num_row = j + 2 + filt_row
@@ -661,11 +661,11 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
         cell = sheet.cell(row=j + 2 + filt_row, column=len(compare_pts) + 4)
         cell.value = np.round(tstd_val, 3)
 
-    #ex_table.save(path)
+    ex_table.save(path)
 
 #exception_list = [63, 64, 65, 66]
 exception_list = []
-two_antennas_max_table_new(210622, [f'{i:03d}' for i in range(1, 21) if i not in exception_list])
+two_antennas_max_table_new(210304, [f'{i:03d}' for i in range(2, 6) if i not in exception_list])
 
 file_nums = [f'{i:03d}' for i in range(61, 67) if i not in exception_list]
 

@@ -9,7 +9,8 @@ from scipy.stats import linregress
 #from obspy.signal.filter import bandstop
 import openpyxl as xl
 from openpyxl.utils import get_column_letter
-default_work_folder_path = r"C:\Users\d_Nice\Documents\SignalProcessing\2021"
+from Signal_Class import Signal
+default_work_folder_path = r"C:\Users\Public\Documents"
 
 class ProcessSignal:
     def __init__(self, experiment_number,
@@ -243,7 +244,7 @@ class ProcessSignal:
         return fnum_1, fnum_2
 
 
-    def read_excel(self, csv_signal_nums):
+    def read_excel(self):
         wb = xl.load_workbook(self.main_excel_path)
         sheet = wb['Лист1']
         row_max = sheet.max_row
@@ -256,15 +257,22 @@ class ProcessSignal:
 
         first_col_row_nums = []
         cols_dict = {}
-        fnums_1, fnums_2 = [], []
+        type_dict = self.read_type_file()
+        signal_type_nums = type_dict['signal_nums']
+        file_nums_1, file_nums_2 = [], []
         for i_row in range(row_min, row_max + 1):
             first_col_cell_val = sheet.cell(row=i_row, column=1).value
             if isinstance(first_col_cell_val, int):
                 first_col_row_nums.append(i_row)
                 fnum_1, fnum_2 = self.fnums_delim(first_col_cell_val)
-                fnums_1.append(fnum_1)
-                fnums_2.append(fnum_2)
-        cols_dict['Номер файла'] = [fnums_1, fnums_2]
+                if fnum_1 in signal_type_nums:
+                    file_nums_1.append(fnum_1)
+                else:
+                    file_nums_1.append(None)
+                if fnum_2 in signal_type_nums:
+                    file_nums_2.append(fnum_2)
+                else:
+                    file_nums_2.append(None)
 
         m = 2
         cell = sheet.cell(row=row_min, column=m)
@@ -292,93 +300,43 @@ class ProcessSignal:
 
         pl_currents = cols_dict['Ток плазмы, А']
         magnetron_delays = cols_dict['Задержка магнетрона, нс']
-        file_nums = cols_dict['Номер файла']
         mampl_nums, noise_nums, other_nums = [], [], []
         for i in range(num_of_vals):
             pl_c_val = pl_currents[i]
             m_delay = magnetron_delays[i]
             if isinstance(pl_c_val, float):
                 if isinstance(m_delay, int):
-                    mampl_nums.append(file_nums[i])
+                    if file_nums_1[i] is not None:
+                        mampl_nums.append(file_nums_1[i])
+                    if file_nums_2[i] is not None:
+                        mampl_nums.append(file_nums_2[i])
                 else:
-                    noise_nums.append(file_nums[i])
+                    if file_nums_1[i] is not None:
+                        noise_nums.append(file_nums_1[i])
+                    if file_nums_2[i] is not None:
+                        noise_nums.append(file_nums_2[i])
             else:
-                other_nums.append[file_nums[i]]
+                if file_nums_1[i] is not None:
+                    other_nums.append(file_nums_1[i])
+                if file_nums_2[i] is not None:
+                    other_nums.append(file_nums_2[i])
 
-
-        row_dicts = []
-        for l in range(row_min + 1, row_max + 1):
+        row_dicts = {}
+        for i in range(num_of_vals):
             row_dict = {}
-            vals = []
-            for m in range(1, col_max + 1):
-                cell = sheet.cell(row=l, column=m)
-                cell_val = cell.value
-                vals.append(cell_val)
-            for i, key in enumerate(keys):
-                if vals[i] is not None:
-                    row_dict[key] = vals[i]
-            row_dicts.append(row_dict)
-        print(row_dicts)
-        plasma_dicts = []
-        reb_dicts = []
-        magnetron_dicts = []
-        for row_dict in row_dicts:
-            fnum = row_dict['Номер файла']
-            gin_voltage = row_dict['Напряжение ГИНа']
-            d_plasma = row_dict['Ток плазмы, А']
-            heating = row_dict['Накал']
-            magnetron_delay = row_dict['Задержка магнетрона, нс']
-            #magnetron_in_voltage = row_dict['Входное напряжение магнетрона, В']
-            #ocmment_axis = row_dict['Комментарий_ось']
-            comment_side = row_dict['Комментарий']
-            if isinstance(fnum, int):
-                if isinstance(d_plasma, float) or isinstance(d_plasma, int):
-                    if comment_side != 'except':
-                        if isinstance(magnetron_delay, float) or isinstance(magnetron_delay, int):
-                            magnetron_dicts.append(row_dict)
-                        else:
-                            plasma_dicts.append(row_dict)
-                elif heating is None and isinstance(gin_voltage, float):
-                    reb_dicts.append(row_dict)
+            for key in keys:
+                if cols_dict[key][i] is not None:
+                    row_dict[key] = cols_dict[key][i]
+            if file_nums_1[i] is not None:
+                row_dicts[file_nums_1[i]] = row_dict
+            if file_nums_2[i] is not None:
+                row_dicts[file_nums_2[i]] = row_dict
 
-        useful_dicts = [plasma_dicts, reb_dicts, magnetron_dicts]
-
-        proc_signal_dicts = {}
-        use_nums = {}
-        list_signals = ['noise', 'reb', 'magnetron']
-        for i, use_dict in enumerate(useful_dicts):
-            #use_csv_files = []
-            fnums = []
-            for row_dict in use_dict:
-                fnum = row_dict['Номер файла']
-                if fnum < 100:
-                    num_1 = fnum // 10
-                    num_2 = fnum % 10
-                elif fnum > 10000:
-                    num_1 = fnum // 1000
-                    num_2 = fnum % 1000
-                else:
-                    num_1 = fnum // 100
-                    num_2 = fnum % 100
-                fnum_1 = '{:03d}'.format(num_1)
-                fnum_2 = '{:03d}'.format(num_2)
-
-                if fnum_1 in csv_signal_nums:
-                    row_dict['Номер файла'] = [fnum_1]
-                    fnums.append(fnum_1)
-                    #use_csv_files.append(row_dict)
-                    proc_signal_dicts[fnum_1] = row_dict
-                elif fnum_2 in csv_signal_nums:
-                    row_dict['Номер файла'] = [fnum_2]
-                    fnums.append(fnum_2)
-                    #use_csv_files.append(row_dict)
-                    proc_signal_dicts[fnum_2] = row_dict
-            #proc_signal_dicts[list_signals[i]] = use_csv_files
-            use_nums[list_signals[i]] = fnums
-
-        excel_results = {'dicts': proc_signal_dicts,
-                         'numbers': use_nums}
-        return excel_results
+        excel_inf = {'row_dicts': row_dicts,
+                     'noise_nums': noise_nums,
+                     'mamp_nums': mampl_nums,
+                     'other_nums': other_nums}
+        return excel_inf
 
     def signal_envelope(self, t, u, dt, time_frame=1e-8):
         num_of_pts = int(time_frame / dt)
