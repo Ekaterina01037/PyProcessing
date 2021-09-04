@@ -231,12 +231,11 @@ def file_nums_oscillogramms(exp_num, file_nums):
 
 def pl_densities_from_excel(exp_num, file_nums_list):
     proc = ProcessSignal(f'{exp_num}')
-    all_files_list = os.listdir(proc.exp_file_path)
+    excel_inf_dict = proc.read_excel()['row_dicts']
     pl_d_vals = []
     for file_num in file_nums_list:
-        file_name = f'str{file_num}.csv'
         try:
-            pl_density = proc.read_excel(file_name)['dicts'][file_num]['Ток плазмы, А']
+            pl_density = excel_inf_dict[file_num]['Ток плазмы, А']
         except:
             pl_density = 0
         pl_d_vals.append(pl_density)
@@ -247,12 +246,11 @@ def pl_densities_from_excel(exp_num, file_nums_list):
 
 def comments_from_excel(exp_num, file_nums_list):
     proc = ProcessSignal(f'{exp_num}')
-    all_files_list = os.listdir(proc.exp_file_path)
+    excel_inf_dict = proc.read_excel()['row_dicts']
     comments = []
     for file_num in file_nums_list:
-        file_name = f'str{file_num}.csv'
         try:
-            comment = proc.read_excel(file_name)['dicts'][file_num]['Комментарий']
+            comment = excel_inf_dict[file_num]['Комментарий']
         except:
             comment = ' '
         comments.append(comment)
@@ -292,13 +290,13 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
             ax = fig.add_subplot(gs[i, 0])
             print(f'Creating a picture {file_num}...')
             line1, = ax.plot(t / 1e-9, u, linewidth=0.7)
-            #line2, = ax.plot(t / 1e-9, u_filt, linewidth=0.7)
+            line2, = ax.plot(t / 1e-9, u_filt, linewidth=0.7)
             ax.set_xlabel(r'$Время, нс$', fontsize=14, fontweight='black')
             ax.set_ylabel(r'$Напряжение, В$', fontsize=14, fontweight='black')
             min_y, max_y = min(u) - 0.25, max(u) + 0.25
-            min_y, max_y = -2.5, 2.5
-            major_ticks = np.arange(-4, 4, 0.5)
-            minor_ticks = np.arange(-4, 4, 0.1)
+            min_y, max_y = -1.0, 1.0
+            major_ticks = np.arange(-4, 4, 0.2)
+            minor_ticks = np.arange(-4, 4, 0.05)
             ax.set_yticks(major_ticks)
             ax.set_yticks(minor_ticks, minor=True)
             ax.grid(which='both', axis='both')
@@ -315,7 +313,7 @@ def file_nums_oscillogramms_density_vals(exp_num, file_nums):
 
 #exception_list = [43, 203]
 exception_list = [119, 120]
-#file_nums_oscillogramms_density_vals(210622, [f'{i:03d}' for i in range(1, 3) if i not in exception_list])
+#file_nums_oscillogramms_density_vals(210903, [f'{i:03d}' for i in range(17, 69) if i not in exception_list])
 
 
 def write_2_antennas_osc_csv(exp_num, file_nums):
@@ -514,7 +512,7 @@ def two_antennas_max_table(exp_num, file_nums):
     ex_table.save(path)
 
 
-def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325, time_step=25):
+def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325, time_step=25, rew=False):
     print(f'Experiment {exp_num}')
     test = ProcessSignal(str(exp_num))
     nums_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 2), 2))
@@ -619,7 +617,7 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
             cell = sheet.cell(row=j + 2 + filt_row, column=1)
             cell.value = f'{int(nums_mtrx[j, i]) - 1} / {nums_mtrx[j, i]}'
 
-            if int(file_num) < 156:
+            if not rew:
                 try:
                     u_relat_filt = delta_u_1_filt / delta_u_3_filt
                     u_relat = delta_u_1 / delta_u_3
@@ -646,8 +644,7 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
                 cell.value = np.round(u_relat_filt, 3)
             else:
                 cell.value = ' '
-        #path = test.excel_folder_path / f'{exp_num}_{nums_mtrx[j, i]}_{comment[:2]}_{comment[4:7]}.xlsx'
-        path = test.excel_folder_path /'max_table.xlsx'
+        path = test.excel_folder_path /f'ampl_u1_u2_{nums_mtrx[0,0]}_{nums_mtrx[-1,-1]}.xlsx'
     for j in range(nums_mtrx.shape[0]):
         vals_list = []
         for i in range(len(pts)):
@@ -665,18 +662,37 @@ def two_antennas_max_table_new(exp_num, file_nums, start_time=100, end_time=325,
 
 #exception_list = [63, 64, 65, 66]
 exception_list = []
-two_antennas_max_table_new(210304, [f'{i:03d}' for i in range(2, 6) if i not in exception_list])
+#two_antennas_max_table_new(210903, [f'{i:03d}' for i in range(51, 69) if i not in exception_list])
 
 file_nums = [f'{i:03d}' for i in range(61, 67) if i not in exception_list]
 
 
-def fnums_list(file_nums):
-    exp_num = 210806
-    nums_list_mtrx = np.reshape(np.asarray(file_nums), (int(len(file_nums) / 6), 6))
-    for nums_list in nums_list_mtrx:
+def fnums_list(first_num=None, last_num=None):
+    exp_num = 210903
+    proc = ProcessSignal(str(exp_num))
+    excel_inf_dict = proc.read_excel()
+    row_dicts = excel_inf_dict['row_dicts']
+    if first_num is None and last_num is None:
+        num_keys = row_dicts.keys()
+    elif last_num is None:
+        keys = row_dicts.keys()
+        num_keys = ['{:03d}'.format(i) for i in range(first_num, int(max(keys)))]
+    elif first_num is None:
+        keys = row_dicts.keys()
+        num_keys = ['{:03d}'.format(i) for i in range(int(min(keys)), last_num + 1)]
+    else:
+        num_keys = ['{:03d}'.format(i) for i in range(first_num, last_num + 1)]
+    comments = comments_from_excel(exp_num, num_keys)
+    unique_comments = [comments[i] for i in range(len(comments) - 1) if comments[i] != comments[i + 1]]
+    unique_comments.append(comments[-1])
+    print(unique_comments)
+
+    for unique_com in unique_comments:
+        nums_list = [num_keys[i] for i in range(len(num_keys)) if row_dicts[num_keys[i]]['Комментарий'] == unique_com]
+        #nums_mtrx = np.reshape(np.asarray(nums_list), (int(len(nums_list) / 2), 2))
         two_antennas_max_table_new(exp_num, nums_list)
 
-#fnums_list(file_nums)
+#fnums_list(first_num=33, last_num=68)
 
 
 def polarization_classification():

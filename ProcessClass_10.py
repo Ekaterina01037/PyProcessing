@@ -257,7 +257,11 @@ class ProcessSignal:
 
         first_col_row_nums = []
         cols_dict = {}
-        type_dict = self.read_type_file()
+        try:
+            type_dict = self.read_type_file()
+        except:
+            self.files_classification()
+            type_dict = self.read_type_file()
         signal_type_nums = type_dict['signal_nums']
         file_nums_1, file_nums_2 = [], []
         for i_row in range(row_min, row_max + 1):
@@ -281,7 +285,7 @@ class ProcessSignal:
         while type(col_name) is str:
             col_vals = []
             keys.append(col_name)
-            print(get_column_letter(m), sheet.cell(row=row_min, column=m).value)
+            #print(get_column_letter(m), sheet.cell(row=row_min, column=m).value)
             for i_row in range(row_min, row_max):
                 if i_row in first_col_row_nums:
                     cell_val = sheet.cell(row=i_row, column=m).value
@@ -296,10 +300,11 @@ class ProcessSignal:
             else:
                 break
         col_max = m
-        print(get_column_letter(col_max), sheet.cell(row=row_min, column=col_max).value)
+        print('Последняя колонка:', get_column_letter(col_max), sheet.cell(row=row_min, column=col_max).value)
 
         pl_currents = cols_dict['Ток плазмы, А']
         magnetron_delays = cols_dict['Задержка магнетрона, нс']
+        comments = cols_dict['Комментарий']
         mampl_nums, noise_nums, other_nums = [], [], []
         for i in range(num_of_vals):
             pl_c_val = pl_currents[i]
@@ -333,6 +338,8 @@ class ProcessSignal:
                 row_dicts[file_nums_2[i]] = row_dict
 
         excel_inf = {'row_dicts': row_dicts,
+                     'comments': comments,
+                     'current_vals': pl_currents,
                      'noise_nums': noise_nums,
                      'mamp_nums': mampl_nums,
                      'other_nums': other_nums}
